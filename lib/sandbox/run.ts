@@ -41,6 +41,29 @@ export interface SandboxRunResult {
 
 type LogCallback = (log: SandboxLog) => void | Promise<void>;
 type ConfigCallback = (config: Buffer) => void | Promise<void>;
+type StageCallback = () => void | Promise<void>;
+
+export function redactRunnerOutput(
+  value: string,
+  secrets: string[],
+): string {
+  let redacted = value;
+  for (const secret of secrets) {
+    if (secret) redacted = redacted.replaceAll(secret, "<redacted>");
+  }
+  return redacted.replace(
+    /([?&](?:token|x-vercel-protection-bypass)=)[^&"'\s]+/gi,
+    "$1<redacted>",
+  );
+}
+
+function runnerSecrets(): string[] {
+  return [
+    process.env.DEMO_LOGIN_TOKEN ?? "",
+    process.env.VERCEL_PROTECTION_BYPASS ?? "",
+    process.env.AI_GATEWAY_API_KEY ?? "",
+  ];
+}
 
 function requiredEnv(name: string, stage: RunnerStage): string {
   const value = process.env[name];
@@ -100,14 +123,24 @@ async function runStage(
   });
   const logs = (async () => {
     for await (const line of command.logs({ signal })) {
-      await onLog?.({ stage, stream: line.stream, data: line.data });
+      await onLog?.({
+        stage,
+        stream: line.stream,
+        data: redactRunnerOutput(line.data, runnerSecrets()),
+      });
     }
   })();
   const finished = await command.wait({ signal });
   await logs;
 
   if (finished.exitCode !== 0) {
-    throw parseRunnerFailure(stage, await finished.stderr({ signal }));
+    throw parseRunnerFailure(
+      stage,
+      redactRunnerOutput(
+        await finished.stderr({ signal }),
+        runnerSecrets(),
+      ),
+    );
   }
 }
 
@@ -131,6 +164,8 @@ export async function runInSandbox(
   input: SandboxRunInput,
   onLog?: LogCallback,
   onConfig?: ConfigCallback,
+  onProvisioned?: StageCallback,
+  onRecorded?: StageCallback,
 ): Promise<SandboxRunResult> {
   const startedAt = Date.now();
   const controller = new AbortController();
@@ -140,6 +175,7 @@ export async function runInSandbox(
   try {
     sandbox = await provisionSandbox(controller.signal);
     const provisionMs = Date.now() - startedAt;
+    await onProvisioned?.();
     const bundle = await readFile(
       resolve(process.cwd(), ".runner/runner.mjs"),
     );
@@ -221,6 +257,7 @@ export async function runInSandbox(
       readRequired(sandbox, `${RUN_DIR}/video.mp4`, "record"),
       readRequired(sandbox, `${RUN_DIR}/poster.png`, "record"),
     ]);
+    await onRecorded?.();
 
     return {
       config,

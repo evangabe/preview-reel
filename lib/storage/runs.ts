@@ -326,6 +326,15 @@ export async function readRunRecord(
   }
 }
 
+export async function readRunLogsUrl(runId: string): Promise<string | null> {
+  try {
+    return (await head(runLogsKey(runId))).url;
+  } catch (error) {
+    if (error instanceof BlobNotFoundError) return null;
+    throw error;
+  }
+}
+
 export async function listRunIdsForPr(
   identity: PrIdentity,
 ): Promise<Array<{ runId: string; claimedAt: string }>> {

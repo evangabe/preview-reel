@@ -1,14 +1,30 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { getRun } from "workflow/api";
 
-// Status polling for a single run (R-8.2). Build order step 4.
-//
-// TODO: read live stage from the Workflow run (`getRun(runId)`) or the
-// latest append-only event record (lib/storage/runs.ts) — never a single
-// overwritten Blob object (R-6.4, Blob's 60s cache/propagation floor).
+import { readRunEvents, readRunRecord } from "@/lib/storage/runs";
+import {
+  deriveRunStatus,
+  type WorkflowRunStatus,
+} from "@/lib/storage/status";
+
 export async function GET(
-  _request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ runId: string }> },
 ) {
-  await params;
-  return NextResponse.json({ error: "not implemented" }, { status: 501 });
+  const { runId } = await params;
+  const [record, events, workflowStatus] = await Promise.all([
+    readRunRecord(runId),
+    readRunEvents(runId),
+    getRun(runId).status.catch(() => null) as Promise<WorkflowRunStatus | null>,
+  ]);
+  const status = deriveRunStatus(events, workflowStatus);
+  const headers = { "Cache-Control": "no-store" };
+
+  if (!status) {
+    return NextResponse.json(
+      { error: "run not found" },
+      { status: 404, headers },
+    );
+  }
+  return NextResponse.json({ runId, record, status }, { headers });
 }

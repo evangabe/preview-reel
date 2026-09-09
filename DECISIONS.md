@@ -131,6 +131,7 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 - **[GitHub]** Kept the GitHub integration as a typed REST `fetch` wrapper rather than adding Octokit; exact PR lookup, branch fallback, changed-file pagination, and comment upsert need only six endpoints. A7 held: `owner:branch` resolved PR #1 and reached `already-demoed`. Tradeoff: comment and file scans are deliberately capped at 300 records.
 - **[Demo target]** Added and pushed `feat/low-stock-filter` as the second deterministic target feature, but the `ghp` token cannot open its PR because its refs are not readable (REST 422); did not switch to the unrelated default GitHub identity. Tradeoff: start/race/live-delivery assertions remain blocked until the token gains Contents read and `DEMO_LOGIN_TOKEN` is rotated.
 - **[Model]** Re-probed AI Gateway after promotional credit increased the key's balance to $25: `anthropic/claude-sonnet-5` is allowlisted but still returns 403 because free-tier credit cannot fund that model, while all six zero-priced language models return the distinct team-restricted 403. Tradeoff: the explorer remains blocked until paid credit is added or a free model is enabled.
+- **[Model]** A further $10 credit addition cleared the paid-model restriction: low-effort smoke calls to `openai/gpt-5.6-luna` and `openai/gpt-6-astra` both returned the exact requested text in 1.43 s and 1.12 s, consuming $0.0006296 total. Tradeoff: this proves Gateway access, not browser-tool reliability.
 
 ## Connection model
 

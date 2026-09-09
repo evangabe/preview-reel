@@ -105,6 +105,15 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 - **[Sandbox]** Built immutable snapshot `snap_bXxesYYnAQIfU8iKWN78dIE7zFCs` in `iad1`, then stored it as a readable `SANDBOX_SNAPSHOT_ID` Config value in Production, Preview, and Development. A8 held with a 407 ms restore; record-only replay returned an 8.05s 1440×900 60fps video and poster in 18.9s (23.2s total including file transfer), leaving ample room under the five-minute limit.
 - **[Build]** The Next.js build now creates the runner first and explicitly includes `.runner/runner.mjs` in output file tracing. Without both, local VM tests pass while deployed Workflow functions fail trying to read a git-ignored build artifact.
 
+## Sandbox runner — checkpoint 4 (immutable Blob artifacts)
+
+- **[Storage]** Kept all keys deterministic and rejected path separators, traversal components, control characters, invalid PR numbers, overflowing event sequences, and non-slug stages before they reach Blob. Event sequences are zero-padded to four digits so lexical listing preserves stage order.
+- **[Storage]** Uploads are immutable and retry-safe: `head()` returns an existing object, `put()` uses `allowOverwrite: false` and no random suffix, and a second `head()` resolves the race where another retry wins between those calls. Tradeoff: a bad first write cannot be corrected in place; a rerun needs a new deployment/run identity, which matches the append-only model.
+- **[Storage]** Added an `onConfig` handoff immediately after Sandbox extraction and before the record command. Video and poster upload in parallel only after recording, and terminal metadata writes last with all three artifact URLs. Live Blob headers show config at 18:06:57 UTC and video at 18:06:58 UTC, proving the required ordering rather than relying on code inspection.
+- **[Storage]** The record-only checkpoint is publicly readable at the exact R-6.1 prefix for PR #1 and its real deployment: config, 323 KiB video, poster, then metadata. A second live run restored the snapshot in 489 ms and completed record + transfer in 28.8s.
+- **[Failure]** A11 held inside the real snapshot: a wrong bypass failed as `explore/preview-protected` in 9.8s, before AI Gateway, then persisted credential-free logs and append-only event `runs/checkpoint-wrong-bypass/events/0000-explore.json` carrying `{ stage, reason, logsUrl }`.
+- **[Dependencies]** Added only `@vercel/sandbox` and `@vercel/blob` for this slice; they are the fixed platform primitives in the spec, replacing no viable standard-library implementation.
+
 ## Connection model
 
 - **[Onboarding]** One team-level Vercel webhook plus an env allowlist, instead of per-repo installation. Tradeoff: target projects must live in the same Vercel team; a real product needs a Vercel Integration.

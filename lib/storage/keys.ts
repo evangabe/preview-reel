@@ -1,8 +1,78 @@
-// Blob key builder (R-6.1) — pure, tested. Also builds the
-// idempotency-sentinel and run-event paths (R-1.5, R-6.4). Not
-// implemented.
-//
-// demos/{owner}/{repo}/pr-{prNumber}/{deploymentId}/video.mp4
-// demos/{owner}/{repo}/pr-{prNumber}/{deploymentId}/poster.png
-// demos/{owner}/{repo}/pr-{prNumber}/{deploymentId}/config.json
-export {};
+export type DemoArtifactName =
+  | "config.json"
+  | "video.mp4"
+  | "poster.png"
+  | "metadata.json";
+
+export interface DemoIdentity {
+  owner: string;
+  repo: string;
+  prNumber: number;
+  deploymentId: string;
+}
+
+function component(value: string, label: string): string {
+  if (
+    value.length === 0 ||
+    value === "." ||
+    value === ".." ||
+    /[/\\\u0000-\u001f\u007f]/.test(value)
+  ) {
+    throw new Error(`${label} is not a safe Blob path component`);
+  }
+  return value;
+}
+
+function positiveInteger(value: number, label: string): number {
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`${label} must be a positive integer`);
+  }
+  return value;
+}
+
+export function demoPrefix(identity: DemoIdentity): string {
+  const owner = component(identity.owner, "owner");
+  const repo = component(identity.repo, "repo");
+  const prNumber = positiveInteger(identity.prNumber, "prNumber");
+  const deploymentId = component(identity.deploymentId, "deploymentId");
+  return `demos/${owner}/${repo}/pr-${prNumber}/${deploymentId}`;
+}
+
+export function demoArtifactKey(
+  identity: DemoIdentity,
+  artifact: DemoArtifactName,
+): string {
+  return `${demoPrefix(identity)}/${artifact}`;
+}
+
+export function demoArtifactKeys(identity: DemoIdentity) {
+  return {
+    config: demoArtifactKey(identity, "config.json"),
+    video: demoArtifactKey(identity, "video.mp4"),
+    poster: demoArtifactKey(identity, "poster.png"),
+    metadata: demoArtifactKey(identity, "metadata.json"),
+  } as const;
+}
+
+export function deploymentSentinelKey(deploymentId: string): string {
+  return `runs/${component(deploymentId, "deploymentId")}/sentinel.json`;
+}
+
+export function runEventKey(
+  runId: string,
+  sequence: number,
+  stage: string,
+): string {
+  const safeRunId = component(runId, "runId");
+  if (!Number.isSafeInteger(sequence) || sequence < 0 || sequence > 9_999) {
+    throw new Error("sequence must be an integer between 0 and 9999");
+  }
+  if (!/^[a-z][a-z0-9-]*$/.test(stage)) {
+    throw new Error("stage must be a lowercase slug");
+  }
+  return `runs/${safeRunId}/events/${String(sequence).padStart(4, "0")}-${stage}.json`;
+}
+
+export function runLogsKey(runId: string): string {
+  return `runs/${component(runId, "runId")}/logs.jsonl`;
+}

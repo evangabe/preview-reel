@@ -40,6 +40,7 @@ export interface SandboxRunResult {
 }
 
 type LogCallback = (log: SandboxLog) => void | Promise<void>;
+type ConfigCallback = (config: Buffer) => void | Promise<void>;
 
 function requiredEnv(name: string, stage: RunnerStage): string {
   const value = process.env[name];
@@ -129,6 +130,7 @@ async function readRequired(
 export async function runInSandbox(
   input: SandboxRunInput,
   onLog?: LogCallback,
+  onConfig?: ConfigCallback,
 ): Promise<SandboxRunResult> {
   const startedAt = Date.now();
   const controller = new AbortController();
@@ -192,6 +194,7 @@ export async function runInSandbox(
       `${RUN_DIR}/config.json`,
       "explore",
     );
+    await onConfig?.(config);
     const recordStartedAt = Date.now();
     await runStage(
       sandbox,

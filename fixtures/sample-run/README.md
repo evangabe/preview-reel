@@ -1,8 +1,11 @@
 # fixtures/sample-run
 
-Sample run artifacts (config, mp4, poster, metadata) go here, used to
-develop the gallery/status/player UI without executing the pipeline. See
-`AGENTS.md` → "Iterate over test."
+A real recording of `evangabe/preview-reel-target` PR #1, used to develop the
+gallery/status/player UI without executing the pipeline. See `AGENTS.md` →
+"Iterate over test."
 
-Populated in build order step 4 (docs/spec.md §12), once a real run
-produces output worth fixturing.
+- `config.json` — six-step WebReel input with unresolved credential placeholders
+- `video.mp4` — 1440×900, 60fps, 10.05s
+- `video.png` — WebReel thumbnail at 1.5s
+- `metadata.json` — fixture run record
+- `phase-0-notes.md` — selectors and the hand-driven `agent-browser` probe

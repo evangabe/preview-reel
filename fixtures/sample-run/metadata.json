@@ -1,0 +1,15 @@
+{
+  "repo": "evangabe/preview-reel-target",
+  "prNumber": 1,
+  "prTitle": "[feat] Bulk select and CSV export",
+  "deploymentId": "dpl_preview_fixture",
+  "deploymentUrl": "https://preview-reel-target-k8fxqt9wc-evanjgabrielson-3414s-projects.vercel.app",
+  "featureSlug": "bulk-select-csv-export",
+  "status": "completed",
+  "durationSeconds": 10.05,
+  "width": 1440,
+  "height": 900,
+  "fps": 60,
+  "videoBytes": 419159,
+  "generatedAt": "2026-09-09T17:07:00.000Z"
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://webreel.dev/schema/v1.json",
+  "videos": {
+    "bulk-select-csv-export": {
+      "url": "https://preview-reel-target-k8fxqt9wc-evanjgabrielson-3414s-projects.vercel.app/api/demo-login?token=${DEMO_LOGIN_TOKEN}&next=/&x-vercel-protection-bypass=${VERCEL_PROTECTION_BYPASS}&x-vercel-set-bypass-cookie=true",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "output": "../video.mp4",
+      "thumbnail": {
+        "time": 1.5
+      },
+      "defaultDelay": 600,
+      "steps": [
+        {
+          "action": "pause",
+          "ms": 1000,
+          "description": "Let the inventory table settle"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"select-P-1001\"]",
+          "description": "Select the first inventory row"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"select-P-1002\"]",
+          "description": "Select a second row to demonstrate bulk actions"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"export-csv\"]",
+          "timeout": 5000,
+          "description": "Wait for the bulk action bar"
+        },
+        {
+          "action": "click",
+          "text": "Export CSV",
+          "description": "Download the selected rows"
+        },
+        {
+          "action": "pause",
+          "ms": 1000,
+          "description": "Hold on the completed bulk action"
+        }
+      ]
+    }
+  }
+}

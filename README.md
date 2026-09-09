@@ -80,9 +80,16 @@ available on Hobby, and the webhook is the entire trigger — nothing else in
 the stack requires the upgrade.
 
 1. Deploy the target app to a Vercel project in the same team as Preview Reel.
-2. Project settings → enable Protection Bypass for Automation → copy the secret into `VERCEL_PROTECTION_BYPASS`.
+2. Generate a Protection Bypass for Automation secret on the target project and copy it into `VERCEL_PROTECTION_BYPASS`. Either Settings → Deployment Protection → Protection Bypass for Automation → Create, or:
+
+   ```bash
+   curl -X PATCH "https://api.vercel.com/v1/projects/<target-project-id>/protection-bypass?teamId=<team-id>" \
+     -H "Authorization: Bearer $VERCEL_TOKEN" -H "content-type: application/json" \
+     -d '{"generate":{"note":"preview-reel"}}'
+   ```
+
 3. Add `owner/repo` to `PREVIEW_REEL_REPOS`. Do not add Preview Reel's own repo, or it will process its own deployments.
-4. Create a fine-grained PAT scoped to that repo; set `GITHUB_TOKEN`.
+4. Create a fine-grained PAT scoped to that repo; set `GITHUB_TOKEN`. Grant **Pull requests: Read and write** and **Issues: Read and write** (Metadata: Read-only is added automatically). GitHub lists the create-issue-comment endpoint under both the Issues and Pull requests permission sets, and a PR comment is attributed to the pull request resource — granting only one side is the usual cause of `Resource not accessible by personal access token`.
 5. Target app exposes `/api/demo-login?token=...&next=...`, which validates the token, sets the session cookie, and redirects. Set that same token as `DEMO_LOGIN_TOKEN`. No credential pair, no scripted login.
 6. Open a PR titled `[feat] ...`.
 

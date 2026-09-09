@@ -61,7 +61,7 @@ export interface RunRecord {
     headRef: string;
     htmlUrl: string;
   };
-  demo: DemoSpec;
+  demo: DemoSpec | null;
   mode: RunMode;
   thinInput: boolean;
   startedAt: string;

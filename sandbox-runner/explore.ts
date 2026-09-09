@@ -11,6 +11,11 @@ import { generateText, isStepCount, tool } from "ai";
 import { z } from "zod";
 
 import {
+  DEFAULT_MODEL_ID,
+  DEFAULT_REASONING_EFFORT,
+  defaultModelProviderOptions,
+} from "../lib/ai/model";
+import {
   demoSpecSchema,
   type WebreelConfig,
   webreelConfigSchema,
@@ -20,7 +25,6 @@ import { runCommand } from "./command";
 import { isRunnerFailure, RunnerFailure } from "./failure";
 
 const MAX_AGENT_ACTIONS = 25;
-const MODEL_ID = "anthropic/claude-sonnet-5";
 
 export const exploreInputSchema = z
   .object({
@@ -314,9 +318,10 @@ export async function explore(rawInput: ExploreInput): Promise<ExploreSummary> {
 
   try {
     const result = await generateText({
-      model: gateway(MODEL_ID),
+      model: gateway(DEFAULT_MODEL_ID),
       toolChoice: "required",
       maxOutputTokens: 4_000,
+      reasoning: DEFAULT_REASONING_EFFORT,
       stopWhen: [
         isStepCount(25),
         () =>
@@ -325,9 +330,9 @@ export async function explore(rawInput: ExploreInput): Promise<ExploreSummary> {
           actions >= MAX_AGENT_ACTIONS,
       ],
       providerOptions: {
+        ...defaultModelProviderOptions,
         gateway: {
           tags: ["preview-reel", input.runId],
-          zeroDataRetention: true,
         },
       },
       system: `You author short, deterministic WebReel demos by exploring a live web app with agent-browser.
@@ -621,7 +626,7 @@ ${initialSnapshotResult.stdout.trim()}`,
     const summary: ExploreSummary = {
       actions,
       durationMs: Date.now() - startedAt,
-      model: MODEL_ID,
+      model: DEFAULT_MODEL_ID,
       modelCostUsd,
       stepsEmitted: onlyVideo.steps.length,
       tokenUsage: {

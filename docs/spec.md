@@ -269,10 +269,12 @@ The grading criterion, so these are requirements rather than nice-to-haves.
 - **R-9.6** The protection bypass secret grants access to every preview deployment on the target project. Treat it as a production credential. It is sent to the target app only, substituted into the URL by `webreel`/`agent-browser` at request time from an environment variable — never logged, never persisted in a run record, and never present in the config file on disk (R-3.8, R-9.2).
 - **R-9.7** The PAT is scoped to a single repo with two permissions. Do not use a classic token or a broad-scope PAT for convenience.
 - **R-9.8** Nothing in `PREVIEW_REEL_REPOS` is trusted for anything except deciding whether to proceed. It is not a security boundary — the webhook signature is.
+- **R-9.9** Luna uses standard OpenAI provider retention in this public-repo v1 because the team's only allowlisted Luna route cannot satisfy Gateway ZDR. Private-repo support requires ZDR-attested BYOK or another compliant route.
 
 ## 10. Cost and observability
 
 - **R-10.1** All model calls route through **AI Gateway** with a **spend cap per key**. Agent loops are screenshot-heavy and can run away.
+- **R-10.1a** `openai/gpt-5.6-luna` at medium reasoning effort is the default for both scoping and exploration. Keep the model choice centralized so a measured replacement changes both call sites.
 - **R-10.2** Per-run cost recorded and displayed in the run detail view.
 
 Per-repo daily run cap (originally R-10.3) is cut for v1 — see §11. It needs cross-run counter state this project has no store for yet; the AI Gateway spend cap is the backstop.

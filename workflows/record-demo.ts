@@ -7,7 +7,10 @@ import {
   type CommentState,
 } from "@/lib/comment/render";
 import { appBaseUrl } from "@/lib/env";
-import { fallbackDemoSpec } from "@/lib/scope/fallback";
+import {
+  ScopeDemoError,
+  scopeDemoWithGateway,
+} from "@/lib/scope/scope-demo";
 import type { DemoSpec } from "@/lib/scope/schema";
 import {
   runInSandbox,
@@ -68,13 +71,25 @@ export type Outcome =
     }
   | { ok: false; failure: RunFailure };
 
-interface ScopeResult {
-  demo: DemoSpec;
-  changedPaths: string[];
-}
+type ScopeResult =
+  | {
+      ok: true;
+      demo: DemoSpec;
+      changedPaths: string[];
+    }
+  | {
+      ok: false;
+      failure: RunFailure;
+    };
+
+type SuccessfulScope = Extract<ScopeResult, { ok: true }>;
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function displayTitle(title: string): string {
+  return title.replace(/^\s*\[(?:feat|feature)\]\s*/i, "").trim();
 }
 
 export async function recordDemo(
@@ -84,6 +99,25 @@ export async function recordDemo(
 
   const { workflowRunId: runId } = getWorkflowMetadata();
   const scope = await scopeDemo(runId, input);
+  if (!scope.ok) {
+    await openRun(runId, input, null);
+    const outcome = { ok: false, failure: scope.failure } as const;
+    await recordOutcome(runId, outcome);
+
+    let commentError: string | undefined;
+    try {
+      await finalizeComment(
+        runId,
+        input,
+        displayTitle(input.pr.title),
+        null,
+        outcome,
+      );
+    } catch (error) {
+      commentError = describe(error);
+    }
+    return commentError ? { ...outcome, commentError } : outcome;
+  }
   await openRun(runId, input, scope.demo);
 
   let commentId: number | null = null;
@@ -106,7 +140,13 @@ export async function recordDemo(
 
   await recordOutcome(runId, outcome);
   try {
-    await finalizeComment(runId, input, scope.demo, commentId, outcome);
+    await finalizeComment(
+      runId,
+      input,
+      scope.demo.title,
+      commentId,
+      outcome,
+    );
   } catch (error) {
     commentError = describe(error);
   }
@@ -121,8 +161,50 @@ async function scopeDemo(
   "use step";
 
   await markStage(runId, "scope");
-  const changedPaths = await listChangedPaths(input.identity, input.identity.prNumber);
-  return { demo: fallbackDemoSpec(input.pr), changedPaths };
+  let changedPaths: string[];
+  try {
+    changedPaths = await listChangedPaths(
+      input.identity,
+      input.identity.prNumber,
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      failure: {
+        stage: "scope",
+        reason: "context-fetch-failed",
+        detail: describe(error),
+        logsUrl: null,
+      },
+    };
+  }
+
+  try {
+    return {
+      ok: true,
+      demo: await scopeDemoWithGateway({
+        runId,
+        previewUrl: input.previewUrl,
+        pr: input.pr,
+        changedPaths,
+      }),
+      changedPaths,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      failure: {
+        stage: "scope",
+        reason:
+          error instanceof ScopeDemoError
+            ? error.reason
+            : "model-call-failed",
+        detail:
+          error instanceof ScopeDemoError ? error.detail : describe(error),
+        logsUrl: null,
+      },
+    };
+  }
 }
 
 scopeDemo.maxRetries = 0;
@@ -130,7 +212,7 @@ scopeDemo.maxRetries = 0;
 async function openRun(
   runId: string,
   input: RecordDemoInput,
-  demo: DemoSpec,
+  demo: DemoSpec | null,
 ): Promise<void> {
   "use step";
 
@@ -202,7 +284,7 @@ async function loadConfig(source: ConfigSource | undefined): Promise<string> {
 async function runPipeline(
   runId: string,
   input: RecordDemoInput,
-  scope: ScopeResult,
+  scope: SuccessfulScope,
 ): Promise<Outcome> {
   "use step";
 
@@ -351,7 +433,7 @@ async function recordOutcome(
 async function finalizeComment(
   runId: string,
   input: RecordDemoInput,
-  demo: DemoSpec,
+  title: string,
   commentId: number | null,
   outcome: Outcome,
 ): Promise<void> {
@@ -361,14 +443,14 @@ async function finalizeComment(
   const state: CommentState = outcome.ok
     ? {
         state: "done",
-        title: demo.title,
+        title,
         statusUrl,
         posterUrl: outcome.artifacts.posterUrl,
         configUrl: outcome.artifacts.configUrl,
       }
     : {
         state: "failed",
-        title: demo.title,
+        title,
         statusUrl,
         failure: outcome.failure,
       };

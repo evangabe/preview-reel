@@ -37,6 +37,13 @@ const LOCAL_ONLY: Record<string, string> = {
 
 export type Env = Record<(typeof MANUAL)[number] | keyof typeof INJECTED, string>;
 
+export function appBaseUrl(): string {
+  const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  return productionHost
+    ? `https://${productionHost.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`
+    : "http://localhost:3000";
+}
+
 /**
  * Throws if anything is missing, naming every absent variable at once —
  * a validator that reports one missing secret per restart turns setup

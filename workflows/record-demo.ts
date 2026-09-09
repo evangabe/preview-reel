@@ -1,6 +1,12 @@
 import { getWorkflowMetadata } from "workflow";
 
 import { isRunnerFailure, RunnerFailure } from "@/sandbox-runner/failure";
+import {
+  commentMarker,
+  renderComment,
+  type CommentState,
+} from "@/lib/comment/render";
+import { appBaseUrl } from "@/lib/env";
 import { fallbackDemoSpec } from "@/lib/scope/fallback";
 import type { DemoSpec } from "@/lib/scope/schema";
 import {
@@ -26,7 +32,13 @@ import {
   writeRunRecord,
 } from "@/lib/storage/runs";
 import type { DemoIdentity } from "@/lib/storage/keys";
-import { listChangedPaths } from "@/lib/trigger/github";
+import {
+  createComment,
+  findCommentByMarker,
+  GitHubError,
+  listChangedPaths,
+  updateComment,
+} from "@/lib/trigger/github";
 
 export interface RecordDemoInput {
   identity: DemoIdentity;
@@ -137,12 +149,32 @@ async function openRun(
 }
 
 async function postInProgressComment(
-  _runId: string,
-  _input: RecordDemoInput,
-  _demo: DemoSpec,
+  runId: string,
+  input: RecordDemoInput,
+  demo: DemoSpec,
 ): Promise<number | null> {
   "use step";
-  return null;
+
+  const marker = commentMarker(input.identity.prNumber);
+  const body = renderComment(input.identity.prNumber, {
+    state: "in_progress",
+    title: demo.title,
+    statusUrl: `${appBaseUrl()}/runs/${encodeURIComponent(runId)}`,
+  });
+  const existing = await findCommentByMarker(
+    input.identity,
+    input.identity.prNumber,
+    marker,
+  );
+  if (existing) {
+    await updateComment(input.identity, existing.id, body);
+    return existing.id;
+  }
+  return (await createComment(
+    input.identity,
+    input.identity.prNumber,
+    body,
+  )).id;
 }
 
 async function loadConfig(source: ConfigSource | undefined): Promise<string> {
@@ -304,11 +336,49 @@ async function recordOutcome(
 }
 
 async function finalizeComment(
-  _runId: string,
-  _input: RecordDemoInput,
-  _demo: DemoSpec,
-  _commentId: number | null,
-  _outcome: Outcome,
+  runId: string,
+  input: RecordDemoInput,
+  demo: DemoSpec,
+  commentId: number | null,
+  outcome: Outcome,
 ): Promise<void> {
   "use step";
+
+  const statusUrl = `${appBaseUrl()}/runs/${encodeURIComponent(runId)}`;
+  const state: CommentState = outcome.ok
+    ? {
+        state: "done",
+        title: demo.title,
+        statusUrl,
+        posterUrl: outcome.artifacts.posterUrl,
+        configUrl: outcome.artifacts.configUrl,
+      }
+    : {
+        state: "failed",
+        title: demo.title,
+        statusUrl,
+        failure: outcome.failure,
+      };
+  const body = renderComment(input.identity.prNumber, state);
+
+  if (commentId !== null) {
+    try {
+      await updateComment(input.identity, commentId, body);
+      return;
+    } catch (error) {
+      if (!(error instanceof GitHubError) || error.status !== 404) throw error;
+    }
+  }
+
+  const marker = commentMarker(input.identity.prNumber);
+  const existing = await findCommentByMarker(
+    input.identity,
+    input.identity.prNumber,
+    marker,
+  );
+  if (existing) {
+    await updateComment(input.identity, existing.id, body);
+    return;
+  }
+  await createComment(input.identity, input.identity.prNumber, body);
 }

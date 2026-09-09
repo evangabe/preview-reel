@@ -4,17 +4,18 @@ export type DemoArtifactName =
   | "poster.png"
   | "metadata.json";
 
-export interface DemoIdentity {
-  owner: string;
-  repo: string;
-  prNumber: number;
-  deploymentId: string;
-}
-
 export interface PrIdentity {
   owner: string;
   repo: string;
   prNumber: number;
+}
+
+export interface DemoIdentity extends PrIdentity {
+  deploymentId: string;
+}
+
+export interface DemoArtifactIdentity extends DemoIdentity {
+  runId: string;
 }
 
 function component(value: string, label: string): string {
@@ -37,22 +38,23 @@ function positiveInteger(value: number, label: string): number {
   return value;
 }
 
-export function demoPrefix(identity: DemoIdentity): string {
+export function demoPrefix(identity: DemoArtifactIdentity): string {
   const owner = component(identity.owner, "owner");
   const repo = component(identity.repo, "repo");
   const prNumber = positiveInteger(identity.prNumber, "prNumber");
   const deploymentId = component(identity.deploymentId, "deploymentId");
-  return `demos/${owner}/${repo}/pr-${prNumber}/${deploymentId}`;
+  const runId = component(identity.runId, "runId");
+  return `demos/${owner}/${repo}/pr-${prNumber}/${deploymentId}/${runId}`;
 }
 
 export function demoArtifactKey(
-  identity: DemoIdentity,
+  identity: DemoArtifactIdentity,
   artifact: DemoArtifactName,
 ): string {
   return `${demoPrefix(identity)}/${artifact}`;
 }
 
-export function demoArtifactKeys(identity: DemoIdentity) {
+export function demoArtifactKeys(identity: DemoArtifactIdentity) {
   return {
     config: demoArtifactKey(identity, "config.json"),
     video: demoArtifactKey(identity, "video.mp4"),

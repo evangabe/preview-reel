@@ -6,6 +6,8 @@ import {
   DEFAULT_MODEL_ID,
   DEFAULT_REASONING_EFFORT,
   defaultModelProviderOptions,
+  readGatewayCost,
+  sumReportedCosts,
 } from "../ai/model";
 
 import { demoSpecSchema, type DemoSpec } from "./schema";
@@ -27,9 +29,19 @@ export interface ScopeGenerationRequest {
   prompt: string;
 }
 
-export type ScopeTextGenerator = (
+export interface ScopeGeneration {
+  text: string;
+  costUsd: number | null;
+}
+
+export type ScopeGenerator = (
   request: ScopeGenerationRequest,
-) => Promise<string>;
+) => Promise<ScopeGeneration>;
+
+export interface ScopeDemoResult {
+  demo: DemoSpec;
+  costUsd: number | null;
+}
 
 export type ScopeDemoFailureReason = "model-call-failed" | "invalid-output";
 
@@ -103,9 +115,9 @@ function parseOutput(text: string):
     : { success: false, error: z.prettifyError(parsed.error) };
 }
 
-async function generateScopeText(
+async function generateScope(
   request: ScopeGenerationRequest,
-): Promise<string> {
+): Promise<ScopeGeneration> {
   const apiKey = process.env.AI_GATEWAY_API_KEY;
   if (!apiKey) {
     throw new Error("AI_GATEWAY_API_KEY is not set");
@@ -127,17 +139,20 @@ async function generateScopeText(
     },
     abortSignal: AbortSignal.timeout(30_000),
   });
-  return result.text.trim();
+  return {
+    text: result.text.trim(),
+    costUsd: readGatewayCost(result.providerMetadata),
+  };
 }
 
 export async function scopeDemoWithGateway(
   input: ScopeDemoInput,
-  generate: ScopeTextGenerator = generateScopeText,
-): Promise<DemoSpec> {
+  generate: ScopeGenerator = generateScope,
+): Promise<ScopeDemoResult> {
   const prompt = buildScopePrompt(input);
-  let initialText: string;
+  let initialGeneration: ScopeGeneration;
   try {
-    initialText = await generate({
+    initialGeneration = await generate({
       runId: input.runId,
       attempt: "initial",
       system: SYSTEM_PROMPT,
@@ -147,12 +162,15 @@ export async function scopeDemoWithGateway(
     throw new ScopeDemoError("model-call-failed", describe(error));
   }
 
+  const initialText = initialGeneration.text;
   const initial = parseOutput(initialText);
-  if (initial.success) return initial.data;
+  if (initial.success) {
+    return { demo: initial.data, costUsd: initialGeneration.costUsd };
+  }
 
-  let repairedText: string;
+  let repairedGeneration: ScopeGeneration;
   try {
-    repairedText = await generate({
+    repairedGeneration = await generate({
       runId: input.runId,
       attempt: "repair",
       system: SYSTEM_PROMPT,
@@ -162,7 +180,16 @@ export async function scopeDemoWithGateway(
     throw new ScopeDemoError("model-call-failed", describe(error));
   }
 
+  const repairedText = repairedGeneration.text;
   const repaired = parseOutput(repairedText);
-  if (repaired.success) return repaired.data;
+  if (repaired.success) {
+    return {
+      demo: repaired.data,
+      costUsd: sumReportedCosts(
+        initialGeneration.costUsd,
+        repairedGeneration.costUsd,
+      ),
+    };
+  }
   throw new ScopeDemoError("invalid-output", repaired.error);
 }

@@ -1,15 +1,28 @@
 {
+  "runId": "wrun_fixture_bulk_select",
   "repo": "evangabe/preview-reel-target",
   "prNumber": 1,
-  "prTitle": "[feat] Bulk select and CSV export",
+  "prTitle": "Bulk select and CSV export",
+  "demoTitle": "Bulk select and CSV export",
+  "featureSlug": "bulk-select-csv-export",
   "deploymentId": "dpl_preview_fixture",
   "deploymentUrl": "https://preview-reel-target-k8fxqt9wc-evanjgabrielson-3414s-projects.vercel.app",
-  "featureSlug": "bulk-select-csv-export",
+  "commitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "prUrl": "https://github.com/evangabe/preview-reel-target/pull/1",
   "status": "completed",
-  "durationSeconds": 10.05,
-  "width": 1440,
-  "height": 900,
-  "fps": 60,
-  "videoBytes": 419159,
-  "generatedAt": "2026-09-09T17:07:00.000Z"
+  "mode": "record-only",
+  "timings": {
+    "provisionMs": 1000,
+    "exploreMs": null,
+    "recordMs": 10050,
+    "totalMs": 11050
+  },
+  "modelCostUsd": null,
+  "logsUrl": "https://example.public.blob.vercel-storage.com/runs/wrun_fixture_bulk_select/logs.jsonl",
+  "generatedAt": "2026-09-09T17:07:00.000Z",
+  "artifacts": {
+    "configUrl": "https://example.public.blob.vercel-storage.com/demos/evangabe/preview-reel-target/pr-1/dpl_preview_fixture/wrun_fixture_bulk_select/config.json",
+    "videoUrl": "https://example.public.blob.vercel-storage.com/demos/evangabe/preview-reel-target/pr-1/dpl_preview_fixture/wrun_fixture_bulk_select/video.mp4",
+    "posterUrl": "https://example.public.blob.vercel-storage.com/demos/evangabe/preview-reel-target/pr-1/dpl_preview_fixture/wrun_fixture_bulk_select/poster.png"
+  }
 }

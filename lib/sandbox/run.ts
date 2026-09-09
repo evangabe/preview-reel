@@ -31,12 +31,28 @@ export interface SandboxRunResult {
   config: Buffer;
   video: Buffer;
   poster: Buffer;
+  modelCostUsd: number | null;
   timings: {
     provisionMs: number;
     exploreMs: number | null;
     recordMs: number;
     totalMs: number;
   };
+}
+
+function parseExploreModelCost(summary: string): number | null {
+  try {
+    const { modelCostUsd } = JSON.parse(summary) as {
+      modelCostUsd?: unknown;
+    };
+    return typeof modelCostUsd === "number" &&
+      Number.isFinite(modelCostUsd) &&
+      modelCostUsd >= 0
+      ? modelCostUsd
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 type LogCallback = (log: SandboxLog) => void | Promise<void>;
@@ -199,6 +215,7 @@ export async function runInSandbox(
     );
 
     let exploreMs: number | null = null;
+    let modelCostUsd: number | null = null;
     if (input.mode === "explore-and-record") {
       const exploreInput = {
         ...input.explore,
@@ -260,6 +277,13 @@ export async function runInSandbox(
         }
       }
       if (exploreError) throw exploreError;
+      const summary = await readOptional(
+        sandbox,
+        `${RUN_DIR}/explore-summary.json`,
+      );
+      if (summary) {
+        modelCostUsd = parseExploreModelCost(summary.toString("utf8"));
+      }
       exploreMs = Date.now() - exploreStartedAt;
     } else {
       await sandbox.writeFiles(
@@ -308,6 +332,7 @@ export async function runInSandbox(
       config,
       video,
       poster,
+      modelCostUsd,
       timings: {
         provisionMs,
         exploreMs,

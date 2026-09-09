@@ -12,6 +12,7 @@ import {
   scopeDemoWithGateway,
 } from "@/lib/scope/scope-demo";
 import type { DemoSpec } from "@/lib/scope/schema";
+import { sumReportedCosts } from "@/lib/ai/model";
 import {
   runInSandbox,
   type SandboxRunResult,
@@ -76,6 +77,7 @@ type ScopeResult =
       ok: true;
       demo: DemoSpec;
       changedPaths: string[];
+      scopeCostUsd: number | null;
     }
   | {
       ok: false;
@@ -180,14 +182,16 @@ async function scopeDemo(
   }
 
   try {
+    const scoped = await scopeDemoWithGateway({
+      runId,
+      previewUrl: input.previewUrl,
+      pr: input.pr,
+      changedPaths,
+    });
     return {
       ok: true,
-      demo: await scopeDemoWithGateway({
-        runId,
-        previewUrl: input.previewUrl,
-        pr: input.pr,
-        changedPaths,
-      }),
+      demo: scoped.demo,
+      scopeCostUsd: scoped.costUsd,
       changedPaths,
     };
   } catch (error) {
@@ -218,7 +222,7 @@ async function openRun(
 
   const record: RunRecord = {
     runId,
-    identity: input.identity,
+    identity: { ...input.identity, runId },
     previewUrl: input.previewUrl,
     commitSha: input.commitSha,
     pr: input.pr,
@@ -288,6 +292,7 @@ async function runPipeline(
 ): Promise<Outcome> {
   "use step";
 
+  const artifactIdentity = { ...input.identity, runId };
   await markStage(runId, "provision");
   const logs: string[] = [];
   let configBlob: StoredBlob | null = null;
@@ -318,7 +323,7 @@ async function runPipeline(
         );
       },
       async (config) => {
-        configBlob = await persistConfig(input.identity, config);
+        configBlob = await persistConfig(artifactIdentity, config);
         await markStage(runId, "record");
       },
       () =>
@@ -365,22 +370,35 @@ async function runPipeline(
     throw new Error("Sandbox completed without returning its artifacts");
   }
 
-  const artifacts = await persistCompletedArtifacts(input.identity, {
-    video: result.video,
-    poster: result.poster,
-    config: configBlob,
-    metadata: {
-      repo: `${input.identity.owner}/${input.identity.repo}`,
-      prNumber: input.identity.prNumber,
-      prTitle: input.pr.title,
-      deploymentId: input.identity.deploymentId,
-      deploymentUrl: input.previewUrl,
-      featureSlug: scope.demo.featureSlug,
-      status: "completed",
-      timings: result.timings,
-      generatedAt: new Date().toISOString(),
+  const artifacts = await persistCompletedArtifacts(
+    artifactIdentity,
+    {
+      video: result.video,
+      poster: result.poster,
+      config: configBlob,
+      metadata: {
+        runId,
+        repo: `${input.identity.owner}/${input.identity.repo}`,
+        prNumber: input.identity.prNumber,
+        prTitle: displayTitle(input.pr.title),
+        demoTitle: scope.demo.title,
+        deploymentId: input.identity.deploymentId,
+        deploymentUrl: input.previewUrl,
+        commitSha: input.commitSha,
+        prUrl: input.pr.htmlUrl,
+        featureSlug: scope.demo.featureSlug,
+        status: "completed",
+        mode: input.mode,
+        timings: result.timings,
+        modelCostUsd: sumReportedCosts(
+          scope.scopeCostUsd,
+          result.modelCostUsd,
+        ),
+        logsUrl,
+        generatedAt: new Date().toISOString(),
+      },
     },
-  });
+  );
 
   return {
     ok: true,

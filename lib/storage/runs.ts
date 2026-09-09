@@ -10,7 +10,7 @@ import type { DemoSpec } from "@/lib/scope/schema";
 
 import {
   demoArtifactKeys,
-  type DemoIdentity,
+  type DemoArtifactIdentity,
   deploymentSentinelKey,
   type PrIdentity,
   prDemosPrefix,
@@ -22,6 +22,12 @@ import {
   runLogsKey,
   runRecordKey,
 } from "./keys";
+import {
+  demoMetadataSchema,
+  newestPerPr,
+  type DemoMetadata,
+  type DemoMetadataInput,
+} from "./metadata";
 
 export interface StoredBlob {
   pathname: string;
@@ -52,7 +58,7 @@ export interface RunFailure {
 
 export interface RunRecord {
   runId: string;
-  identity: DemoIdentity;
+  identity: DemoArtifactIdentity;
   previewUrl: string;
   commitSha: string;
   pr: {
@@ -144,7 +150,7 @@ async function listAll(prefix: string) {
 }
 
 export async function persistConfig(
-  identity: DemoIdentity,
+  identity: DemoArtifactIdentity,
   config: Uint8Array,
 ): Promise<StoredBlob> {
   const { blob } = await putOnce(demoArtifactKeys(identity).config, config, {
@@ -155,11 +161,11 @@ export async function persistConfig(
 }
 
 export async function persistCompletedArtifacts(
-  identity: DemoIdentity,
+  identity: DemoArtifactIdentity,
   input: {
     video: Uint8Array;
     poster: Uint8Array;
-    metadata: Record<string, unknown>;
+    metadata: DemoMetadataInput;
     config: StoredBlob;
   },
 ) {
@@ -175,20 +181,17 @@ export async function persistCompletedArtifacts(
       contentType: "image/png",
     }).then(({ blob }) => blob),
   ]);
+  const completedMetadata = demoMetadataSchema.parse({
+    ...input.metadata,
+    artifacts: {
+      configUrl: input.config.url,
+      videoUrl: video.url,
+      posterUrl: poster.url,
+    },
+  });
   const { blob: metadata } = await putOnce(
     keys.metadata,
-    `${JSON.stringify(
-      {
-        ...input.metadata,
-        artifacts: {
-          configUrl: input.config.url,
-          videoUrl: video.url,
-          posterUrl: poster.url,
-        },
-      },
-      null,
-      2,
-    )}\n`,
+    `${JSON.stringify(completedMetadata, null, 2)}\n`,
     {
       ...PUBLIC_ONCE,
       contentType: "application/json; charset=utf-8",
@@ -339,13 +342,76 @@ export async function readRunRecord(
   }
 }
 
-export async function readRunLogsUrl(runId: string): Promise<string | null> {
+async function readBlobUrl(pathname: string): Promise<string | null> {
   try {
-    return (await head(runLogsKey(runId))).url;
+    return (await head(pathname)).url;
   } catch (error) {
     if (error instanceof BlobNotFoundError) return null;
     throw error;
   }
+}
+
+export function readRunLogsUrl(runId: string): Promise<string | null> {
+  return readBlobUrl(runLogsKey(runId));
+}
+
+export function readExploreTranscriptUrl(
+  runId: string,
+): Promise<string | null> {
+  return readBlobUrl(runExploreTranscriptKey(runId));
+}
+
+export function readConfigUrl(
+  identity: DemoArtifactIdentity,
+): Promise<string | null> {
+  return readBlobUrl(demoArtifactKeys(identity).config);
+}
+
+async function readMetadata(
+  pathname: string,
+  url: string,
+): Promise<DemoMetadata | null> {
+  let value: unknown;
+  try {
+    value = await readJson<unknown>(url);
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    console.warn(
+      `Skipping invalid JSON demo metadata at ${pathname}: ${error.message}`,
+    );
+    return null;
+  }
+  const parsed = demoMetadataSchema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  console.warn(
+    `Skipping invalid demo metadata at ${pathname}: ${parsed.error.message}`,
+  );
+  return null;
+}
+
+export async function readDemoForRun(
+  record: RunRecord,
+): Promise<DemoMetadata | null> {
+  const key = demoArtifactKeys(record.identity).metadata;
+  try {
+    const blob = await head(key);
+    return readMetadata(blob.pathname, blob.url);
+  } catch (error) {
+    if (error instanceof BlobNotFoundError) return null;
+    throw error;
+  }
+}
+
+export async function listCompletedDemos(): Promise<DemoMetadata[]> {
+  const blobs = (await listAll("demos/")).filter((blob) =>
+    blob.pathname.endsWith("/metadata.json"),
+  );
+  const metadata = await Promise.all(
+    blobs.map((blob) => readMetadata(blob.pathname, blob.url)),
+  );
+  return newestPerPr(
+    metadata.filter((demo): demo is DemoMetadata => demo !== null),
+  );
 }
 
 export async function listRunIdsForPr(

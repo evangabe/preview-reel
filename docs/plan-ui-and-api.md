@@ -45,6 +45,7 @@ Checked against the codebase at commit `6a54a79` on 2026-09-09.
 | `config.json` is persisted **before** recording starts (`onConfig` callback → `persistConfig` → `markStage("record")`), so a run that fails at `record` still has a downloadable config at the demo prefix (R-4.6). | `runPipeline` |
 | Logs (`runs/{runId}/logs.jsonl`, credential-redacted NDJSON) and the exploration transcript (`runs/{runId}/explore-transcript.jsonl`) are persisted per run. `readRunLogsUrl(runId)` exists; there is no transcript equivalent. The transcript URL is only recoverable from an `artifact` line inside the logs. | `lib/storage/runs.ts`, `runPipeline` transcript callback |
 | `modelCostUsd` is computed inside the sandbox (`explore-summary.json`) but `SandboxRunResult` does not carry it out and nothing persists it. Scoping cost is not measured at all. | `sandbox-runner/explore.ts` line 610–630, `lib/sandbox/run.ts::SandboxRunResult` |
+| Live Luna responses expose inference cost immediately as the decimal string `providerMetadata.gateway.cost` and the real `gen_…` ID as `providerMetadata.gateway.generationId`; AI SDK's `result.response.id` is an `aitxt-…` client ID. `getGenerationInfo()` failed through the installed SDK even with the real ID after 4.25 s of retries. | Checkpoint-1 smoke probe, 2026-09-09 |
 | `hasCompletedDemo(identity)` and `listRunIdsForPr(identity)` are per-PR. There is no "list all completed demos" function. `listAll(prefix)` paginates `@vercel/blob` `list()` at 1 000 per page and sorts by pathname. | `lib/storage/runs.ts` |
 | The dev harness (`app/api/dev/trigger-run/route.ts`, `scripts/trigger-run.ts`) already starts `record-only` runs with `configSource: { kind: "inline" }`; `{ kind: "blob", url }` is implemented in `loadConfig()` and unused. | `workflows/record-demo.ts::loadConfig` |
 | `postInProgressComment` and `finalizeComment` upsert by marker, so a re-run started with the same `identity` updates the existing PR comment in place. Nothing to add for R-7.1. | `workflows/record-demo.ts` |
@@ -118,10 +119,11 @@ Do not relitigate mid-loop. If one proves wrong, log it in `DECISIONS.md` and st
 
 5. **Model cost is explore cost plus scope cost, or `null`.** Surface
    `modelCostUsd` from `explore-summary.json` through `SandboxRunResult`.
-   For scoping, `generateText` returns `usage`; store token counts and the
-   Gateway-reported cost when `providerMetadata.gateway.cost` is present,
-   else `null` for that leg. Display "Model cost: $0.0412" or "Model cost:
-   not reported". Never estimate from a price table.
+   Read `providerMetadata.gateway.cost` on every generation, parse its decimal
+   string, and sum only reported values. This is the model inference cost; per
+   Vercel's docs it excludes add-on charges such as reporting-tag writes.
+   Display "Model cost: $0.0412" or "Model cost: not reported". Never estimate
+   from a price table.
 
 6. **The rerun route is public and unauthenticated, like everything else
    (§11 "Auth on the gallery").** It re-checks the in-progress guard so it
@@ -174,13 +176,14 @@ Do not relitigate mid-loop. If one proves wrong, log it in `DECISIONS.md` and st
 ### 5.1 `lib/storage/keys.ts` — change, tested
 
 ```ts
-export interface DemoIdentity extends PrIdentity {
-  deploymentId: string;
-  runId: string;               // new
-}
+export interface DemoIdentity extends PrIdentity { deploymentId: string }
+export interface DemoArtifactIdentity extends DemoIdentity { runId: string }
 demoPrefix(identity)            // demos/{owner}/{repo}/pr-{n}/{deploymentId}/{runId}
 ```
 
+Keep the two identities separate: `RecordDemoInput` cannot know its Workflow
+run ID before `start()` returns. Artifact functions take
+`DemoArtifactIdentity`; trigger/workflow input keeps taking `DemoIdentity`.
 `runId` goes through `component()`. Existing tests updated; add one asserting
 the new segment. `prDemosPrefix` unchanged.
 
@@ -236,7 +239,7 @@ export async function listCompletedDemos(): Promise<DemoMetadata[]>
 export async function readDemoForRun(record: RunRecord): Promise<DemoMetadata | null>
 // head(demoArtifactKeys(record.identity).metadata) → parse; null on 404.
 
-export async function readConfigUrl(identity: DemoIdentity): Promise<string | null>
+export async function readConfigUrl(identity: DemoArtifactIdentity): Promise<string | null>
 // head(config.json) → url; null on 404. Exists on record-stage failures.
 
 export async function readExploreTranscriptUrl(runId: string): Promise<string | null>
@@ -270,16 +273,17 @@ the explorer's loop.
 
 ### 5.6 `lib/scope/scope-demo.ts` — one field
 
-`scopeDemoWithGateway` returns `{ demo, cost: { usd: number | null } }` (or
-adds a second return; keep the call site change to one line). Read
-`result.providerMetadata?.gateway?.cost` if present; do not compute from
-tokens. `ScopeResult.ok` gains `scopeCostUsd`.
+`scopeDemoWithGateway` returns `{ demo, costUsd: number | null }`. If
+`providerMetadata.gateway.cost` is a non-negative decimal string, parse it;
+otherwise return `null`. The explorer uses the same helper across
+`result.steps`. Do not compute from tokens. `ScopeResult.ok` gains
+`scopeCostUsd`.
 
 ### 5.7 `workflows/record-demo.ts` — plumbing only
 
 - `identity` passed into the workflow lacks `runId` (it is only known inside);
-  build `const identity = { ...input.identity, runId }` once at the top and
-  use it for every storage call. `RunRecord.identity` stores the full shape.
+  construct one `DemoArtifactIdentity` inside each step that writes artifacts.
+  `RunRecord.identity` stores the full shape.
 - `persistCompletedArtifacts` receives the typed metadata: `runId`,
   `commitSha`, `prUrl: input.pr.htmlUrl`, `prTitle: displayTitle(...)`,
   `demoTitle: scope.demo.title`, `mode`, `modelCostUsd` (explore + scope, or
@@ -319,7 +323,7 @@ body: { "mode": "explore-and-record" | "record-only" }
 |---|---|---|
 | Run record missing | 404 | `{ error: "run not found" }` |
 | Body fails zod | 400 | `{ error: "mode must be explore-and-record or record-only" }` |
-| Another run for this PR is `pending`/`running` (same 15-min pointer check as the webhook — extract it from the webhook route into `lib/storage/runs.ts::hasRunInProgress(identity)` and call it from both) | 409 | `{ error: "run-in-progress", runId }` |
+| Another run for this PR is `pending`/`running` (same 15-min pointer check as the webhook) | 409 | `{ error: "run-in-progress", runId }` |
 | `record-only` and no `config.json` at the source run's demo prefix | 409 | `{ error: "no-config", detail: "This run never produced a config. Re-run the full pipeline instead." }` |
 | Started | 202 | `{ runId }` |
 
@@ -329,6 +333,11 @@ Input to `start(recordDemo, [input])` is rebuilt from the record: same
 { kind: "blob", url: configUrl }` for `record-only`. Then `indexRunForPr`.
 Log one JSON line like the webhook does. Never throw a 500 for a Workflow
 start failure without logging the reason.
+
+Once this route is the second caller, extract the webhook's in-progress block
+into `lib/runs/in-progress.ts` and call it from both routes. That module alone
+imports `workflow/api`; do not pull Workflow runtime initialization into
+`lib/storage/runs.ts`, which standalone scripts import.
 
 Note the `pr` snapshot is from the original run; a re-run after the PR title
 was edited records the old title. Acceptable — identity is `(repo, prNumber)`
@@ -425,8 +434,7 @@ Uploading.
 
 Keys with `runId`, `demoMetadataSchema`, `groupByRecency`, `newestPerPr`,
 `phaseList`, `listCompletedDemos`, `readDemoForRun`, `readConfigUrl`,
-`readExploreTranscriptUrl`, `hasRunInProgress` (extracted from the webhook
-route; the route now calls it). Workflow plumbing for `runId`, `modelCostUsd`,
+`readExploreTranscriptUrl`. Workflow plumbing for `runId`, `modelCostUsd`,
 typed metadata. Update fixture `metadata.json`. Tests for every pure function.
 
 Existing PR #1/#2 metadata objects in Blob predate the schema and will
@@ -498,10 +506,9 @@ Log the outcome of each in `DECISIONS.md` when it is tested.
 | # | Assumption | If false |
 |---|---|---|
 | A1 | `head()` on a public Blob key returns within ~100 ms; four in parallel per poll tick is fine. | Fold `configUrl`/`logsUrl`/`transcriptUrl` into the run record at write time instead. |
-| A2 | `providerMetadata.gateway.cost` is present on `generateText` responses through AI Gateway for `openai/gpt-5.6-luna`. | Store `null` for the scope leg; do not estimate. |
-| A3 | A `<video>` with a public Blob `src` streams with range requests in Chrome and Safari without a proxy route. | Add `app/api/runs/[runId]/video/route.ts` that streams from Blob with `Range` passthrough. Log why. |
-| A4 | `listAll("demos/")` for two PRs is one page. | It is, for years, at this scale; if the store ever crosses 1 000 objects, add a per-repo index later. |
-| A5 | A `record-only` re-run against PR #2's current preview URL still authenticates (the `DEMO_LOGIN_TOKEN` was rotated and older *immutable* deployments hold the old value — DECISIONS `[Security]`). | Re-run against a fresh deployment; the route uses the record's `previewUrl`, so pick a run whose deployment postdates the rotation. |
+| A2 | A `<video>` with a public Blob `src` streams with range requests in Chrome and Safari without a proxy route. | Add `app/api/runs/[runId]/video/route.ts` that streams from Blob with `Range` passthrough. Log why. |
+| A3 | `listAll("demos/")` for two PRs is one page. | It is, for years, at this scale; if the store ever crosses 1 000 objects, add a per-repo index later. |
+| A4 | A `record-only` re-run against PR #2's current preview URL still authenticates (the `DEMO_LOGIN_TOKEN` was rotated and older *immutable* deployments hold the old value — DECISIONS `[Security]`). | Re-run against a fresh deployment; the route uses the record's `previewUrl`, so pick a run whose deployment postdates the rotation. |
 
 ---
 
@@ -519,7 +526,7 @@ app/
   api/runs/[runId]/route.ts         extend response via loadRunView
   api/runs/[runId]/rerun/route.ts   implement
   api/dev/trigger-run/route.ts      delete (slice 5)
-  api/webhooks/vercel/route.ts      call hasRunInProgress (no behavior change)
+  api/webhooks/vercel/route.ts      share in-progress guard in slice 4
 components/
   site-header.tsx  gallery-grid.tsx  empty-state.tsx  run-status.tsx
   run-metadata.tsx  demo-player.tsx  rerun-buttons.tsx        new
@@ -530,10 +537,11 @@ lib/storage/
   phases.ts        new — phaseList (+ tests)
   run-view.ts      new — loadRunView
   runs.ts          listCompletedDemos, readDemoForRun, readConfigUrl,
-                   readExploreTranscriptUrl, hasRunInProgress, typed metadata
+                   readExploreTranscriptUrl, typed metadata
+lib/runs/in-progress.ts             new in slice 4 — shared Workflow guard
 lib/sandbox/run.ts                  modelCostUsd on result
 lib/scope/scope-demo.ts             scope cost
-workflows/record-demo.ts            identity.runId, typed metadata, cost
+workflows/record-demo.ts            artifact identity, typed metadata, cost
 fixtures/sample-run/metadata.json   new shape
 scripts/trigger-run.ts              delete (slice 5)
 README.md                           stale status text, "Using the app"

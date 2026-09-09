@@ -14,6 +14,8 @@ import {
   DEFAULT_MODEL_ID,
   DEFAULT_REASONING_EFFORT,
   defaultModelProviderOptions,
+  readGatewayCost,
+  sumReportedCosts,
 } from "../lib/ai/model";
 import {
   demoSpecSchema,
@@ -600,27 +602,11 @@ ${initialSnapshotResult.stdout.trim()}`,
       );
     }
 
-    const generationIds = [
-      ...new Set(
-        result.steps
-          .map((step) => step.response.id)
-          .filter((id) => id.startsWith("gen_")),
+    const modelCostUsd = sumReportedCosts(
+      ...result.steps.map((step) =>
+        readGatewayCost(step.providerMetadata),
       ),
-    ];
-    let modelCostUsd: number | null = null;
-    if (generationIds.length > 0) {
-      try {
-        const generations = await Promise.all(
-          generationIds.map((id) => gateway.getGenerationInfo({ id })),
-        );
-        modelCostUsd = generations.reduce(
-          (total, generation) => total + generation.totalCost,
-          0,
-        );
-      } catch {
-        // Cost lookup is observability, not a reason to discard a valid config.
-      }
-    }
+    );
 
     const onlyVideo = Object.values(completedConfig.videos)[0];
     const summary: ExploreSummary = {

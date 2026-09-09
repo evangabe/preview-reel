@@ -1,0 +1,36 @@
+{
+  "id": "evt_fixture_deployment_succeeded",
+  "type": "deployment.succeeded",
+  "createdAt": 1757444400000,
+  "region": "iad1",
+  "payload": {
+    "team": {
+      "id": "team_VSTlHHiJh5nS7NI8PYWhxuFI"
+    },
+    "user": {
+      "id": "user_fixture"
+    },
+    "deployment": {
+      "id": "dpl_Eb2kwnpY8TzuCEwJBnt2eiHm7Am4",
+      "url": "preview-reel-target-k8fxqt9wc-evanjgabrielson-3414s-projects.vercel.app",
+      "name": "preview-reel-target",
+      "meta": {
+        "githubOrg": "evangabe",
+        "githubRepo": "preview-reel-target",
+        "githubPrId": "1",
+        "githubCommitRef": "feat/bulk-select-csv-export",
+        "githubCommitSha": "1389ca88f1515b3d5158788ee23f706403a4d5b4",
+        "githubDeployment": "1"
+      }
+    },
+    "links": {},
+    "target": null,
+    "project": {
+      "id": "prj_target_fixture"
+    },
+    "plan": "pro",
+    "regions": [
+      "iad1"
+    ]
+  }
+}

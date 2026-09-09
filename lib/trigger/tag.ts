@@ -1,3 +1,14 @@
-// [feat] / [feature] PR title matcher (R-2.1). Pure, tested — see
-// docs/spec.md §7.2. Not implemented.
-export {};
+export type TagMatch =
+  | { matched: true; title: string }
+  | { matched: false };
+
+const FEATURE_TAG = /^\s*\[(?:feat|feature)\]/i;
+
+export function matchFeatureTag(title: string): TagMatch {
+  const match = FEATURE_TAG.exec(title);
+  if (!match) return { matched: false };
+  return {
+    matched: true,
+    title: title.slice(match[0].length).trim(),
+  };
+}

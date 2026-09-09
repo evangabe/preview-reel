@@ -140,7 +140,7 @@ Orchestration is a **Vercel Workflow**. Steps 1–6 are durable steps so a 3-min
 
 ### 7.4 Exploration (agent-browser)
 
-- **R-4.1** Input: preview URL (with the bypass secret already applied as an `agent-browser` request header, per R-3.7), the demo spec from R-2.6 (title, entry point, intent), and changed file paths. The config it emits must express the entry URL with the `${VERCEL_PROTECTION_BYPASS}` / `${DEMO_LOGIN_TOKEN}` query-param placeholders from R-3.8, not the resolved values — the agent works against real credentials, but writes placeholders into the artifact it produces.
+- **R-4.1** Input: preview URL (with the bypass secret already applied as an `agent-browser` request header, per R-3.7), the demo spec from R-2.6 (title, entry point, intent), the first 10,000 characters of the PR body as explicitly untrusted feature context, and changed file paths. The config it emits must express the entry URL with the `${VERCEL_PROTECTION_BYPASS}` / `${DEMO_LOGIN_TOKEN}` query-param placeholders from R-3.8, not the resolved values — the agent works against real credentials, but writes placeholders into the artifact it produces.
 - **R-4.2** The agent navigates and inspects using the accessibility snapshot, and its **output is a WebReel config, not a video.**
 - **R-4.3** Config must be ≤ 12 steps. Longer means the agent got lost.
 - **R-4.4** Selectors must be resolvable and stable. Prefer roles and test ids over nth-child chains.

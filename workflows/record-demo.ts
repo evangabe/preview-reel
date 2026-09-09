@@ -20,6 +20,7 @@ import {
   markStage,
   persistCompletedArtifacts,
   persistConfig,
+  persistExploreTranscript,
   persistRunLogs,
   readRunEvents,
   readRunLogsUrl,
@@ -225,6 +226,7 @@ async function runPipeline(
               runId,
               previewUrl: input.previewUrl,
               demoSpec: scope.demo,
+              prDescription: input.pr.body.slice(0, 10_000),
               changedPaths: scope.changedPaths,
             },
           },
@@ -243,6 +245,17 @@ async function runPipeline(
           input.mode === "record-only" ? "record" : "explore",
         ),
       () => markStage(runId, "upload"),
+      async (transcript) => {
+        const blob = await persistExploreTranscript(runId, transcript);
+        logs.push(
+          JSON.stringify({
+            at: new Date().toISOString(),
+            stage: "explore",
+            stream: "artifact",
+            data: blob.url,
+          }),
+        );
+      },
     );
   } catch (error) {
     if (!isRunnerFailure(error)) throw error;

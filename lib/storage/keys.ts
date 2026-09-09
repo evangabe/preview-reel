@@ -112,3 +112,7 @@ export function runEventKey(
 export function runLogsKey(runId: string): string {
   return `runs/${component(runId, "runId")}/logs.jsonl`;
 }
+
+export function runExploreTranscriptKey(runId: string): string {
+  return `runs/${component(runId, "runId")}/explore-transcript.jsonl`;
+}

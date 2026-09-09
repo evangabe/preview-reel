@@ -7,6 +7,7 @@ import {
   prDemosPrefix,
   prRunIndexKey,
   prRunsPrefix,
+  runExploreTranscriptKey,
   runEventKey,
   runEventsPrefix,
   runLogsKey,
@@ -57,6 +58,9 @@ describe("run keys", () => {
       "runs/wfr_123/events/0007-recording.json",
     );
     expect(runLogsKey("wfr_123")).toBe("runs/wfr_123/logs.jsonl");
+    expect(runExploreTranscriptKey("wfr_123")).toBe(
+      "runs/wfr_123/explore-transcript.jsonl",
+    );
   });
 
   it("builds PR indexes and run record prefixes", () => {

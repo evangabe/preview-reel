@@ -41,6 +41,7 @@ export interface SandboxRunResult {
 
 type LogCallback = (log: SandboxLog) => void | Promise<void>;
 type ConfigCallback = (config: Buffer) => void | Promise<void>;
+type TranscriptCallback = (transcript: Buffer) => void | Promise<void>;
 type StageCallback = () => void | Promise<void>;
 
 export function redactRunnerOutput(
@@ -160,12 +161,25 @@ async function readRequired(
   return value;
 }
 
+async function readOptional(
+  sandbox: Sandbox,
+  path: string,
+): Promise<Buffer | null> {
+  try {
+    const value = await sandbox.readFileToBuffer({ path });
+    return value && value.byteLength > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function runInSandbox(
   input: SandboxRunInput,
   onLog?: LogCallback,
   onConfig?: ConfigCallback,
   onProvisioned?: StageCallback,
   onRecorded?: StageCallback,
+  onTranscript?: TranscriptCallback,
 ): Promise<SandboxRunResult> {
   const startedAt = Date.now();
   const controller = new AbortController();
@@ -200,21 +214,52 @@ export async function runInSandbox(
         { signal: controller.signal },
       );
       const exploreStartedAt = Date.now();
-      await runStage(
+      let exploreError: unknown;
+      try {
+        await runStage(
+          sandbox,
+          "explore",
+          ["--input", `${RUN_DIR}/explore-input.json`],
+          {
+            DEMO_LOGIN_TOKEN: requiredEnv("DEMO_LOGIN_TOKEN", "explore"),
+            VERCEL_PROTECTION_BYPASS: requiredEnv(
+              "VERCEL_PROTECTION_BYPASS",
+              "explore",
+            ),
+            AI_GATEWAY_API_KEY: requiredEnv("AI_GATEWAY_API_KEY", "explore"),
+          },
+          controller.signal,
+          onLog,
+        );
+      } catch (error) {
+        exploreError = error;
+      }
+      const transcript = await readOptional(
         sandbox,
-        "explore",
-        ["--input", `${RUN_DIR}/explore-input.json`],
-        {
-          DEMO_LOGIN_TOKEN: requiredEnv("DEMO_LOGIN_TOKEN", "explore"),
-          VERCEL_PROTECTION_BYPASS: requiredEnv(
-            "VERCEL_PROTECTION_BYPASS",
-            "explore",
-          ),
-          AI_GATEWAY_API_KEY: requiredEnv("AI_GATEWAY_API_KEY", "explore"),
-        },
-        controller.signal,
-        onLog,
+        `${RUN_DIR}/explore-transcript.jsonl`,
       );
+      if (transcript) {
+        try {
+          await onTranscript?.(
+            Buffer.from(
+              redactRunnerOutput(
+                transcript.toString("utf8"),
+                runnerSecrets(),
+              ),
+            ),
+          );
+        } catch (error) {
+          if (!exploreError) throw error;
+          await onLog?.({
+            stage: "explore",
+            stream: "stderr",
+            data: `Could not persist exploration transcript: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          });
+        }
+      }
+      if (exploreError) throw exploreError;
       exploreMs = Date.now() - exploreStartedAt;
     } else {
       await sandbox.writeFiles(

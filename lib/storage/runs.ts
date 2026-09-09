@@ -16,6 +16,7 @@ import {
   prDemosPrefix,
   prRunIndexKey,
   prRunsPrefix,
+  runExploreTranscriptKey,
   runEventKey,
   runEventsPrefix,
   runLogsKey,
@@ -219,6 +220,18 @@ export async function persistRunLogs(
   logs: string,
 ): Promise<StoredBlob> {
   const { blob } = await putOnce(runLogsKey(runId), logs, {
+    ...PUBLIC_ONCE,
+    contentType: "application/x-ndjson; charset=utf-8",
+    cacheControlMaxAge: 60,
+  });
+  return blob;
+}
+
+export async function persistExploreTranscript(
+  runId: string,
+  transcript: string | Uint8Array,
+): Promise<StoredBlob> {
+  const { blob } = await putOnce(runExploreTranscriptKey(runId), transcript, {
     ...PUBLIC_ONCE,
     contentType: "application/x-ndjson; charset=utf-8",
     cacheControlMaxAge: 60,

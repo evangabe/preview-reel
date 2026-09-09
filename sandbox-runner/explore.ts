@@ -342,7 +342,11 @@ For replay steps:
 - Use WebReel's exact action names and fields. Exploration tool names such as press and fill are not valid replay actions.
 - Keyboard: {"action":"key","key":"Control+k"}; optionally add "target" as a CSS selector.
 - Text entry: {"action":"type","selector":"[data-testid=\\"example\\"]","text":"value"}.
-- Other valid actions are click, pause, drag, scroll, wait, moveTo, screenshot, navigate, hover, and select.
+- Click, hover, or move: {"action":"click"|"hover"|"moveTo", exactly one of "text" or "selector"}.
+- Pause: {"action":"pause","ms":1000}. Wait: {"action":"wait", exactly one of "text" or "selector", optional "timeout"}.
+- Screenshot: {"action":"screenshot","output":"name.png"}. Navigate: {"action":"navigate","url":"/same-origin-path"}.
+- Scroll needs "x", "y", or exactly one of "text"/"selector". Select needs exactly one of "text"/"selector" plus "value". Drag needs "from" and "to", each containing exactly one of "text"/"selector".
+- Every object is strict. Do not omit required fields, combine text with selector, or add decorative pause, wait, or screenshot steps.
 - Include only the clean feature demonstration, not login or setup.
 - Keep the result at 12 steps or fewer.
 - Do not invent success. If the feature cannot be located, call finish with found=false.

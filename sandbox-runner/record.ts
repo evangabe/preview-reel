@@ -1,4 +1,11 @@
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { basename, resolve } from "node:path";
 
 import { z } from "zod";
@@ -77,7 +84,8 @@ export async function record(rawInput: RecordInput): Promise<RecordSummary> {
   const outDir = resolve(input.outDir);
   const configPath = resolve(outDir, "config.json");
   const videoPath = resolve(outDir, "video.mp4");
-  const posterPath = resolve(outDir, "video.png");
+  const generatedPosterPath = resolve(outDir, "video.png");
+  const posterPath = resolve(outDir, "poster.png");
   const summaryPath = resolve(outDir, "record-summary.json");
   await mkdir(outDir, { recursive: true });
 
@@ -100,6 +108,7 @@ export async function record(rawInput: RecordInput): Promise<RecordSummary> {
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
   await Promise.all([
     rm(videoPath, { force: true }),
+    rm(generatedPosterPath, { force: true }),
     rm(posterPath, { force: true }),
     rm(summaryPath, { force: true }),
   ]);
@@ -137,7 +146,7 @@ export async function record(rawInput: RecordInput): Promise<RecordSummary> {
 
   const [videoStats, posterStats] = await Promise.all([
     stat(videoPath),
-    stat(posterPath),
+    stat(generatedPosterPath),
   ]).catch((error: unknown) => {
     throw new RunnerFailure(
       "record",
@@ -152,6 +161,7 @@ export async function record(rawInput: RecordInput): Promise<RecordSummary> {
       `Artifacts are unexpectedly small: video=${videoStats.size}, poster=${posterStats.size}`,
     );
   }
+  await rename(generatedPosterPath, posterPath);
 
   const summary: RecordSummary = {
     durationMs: Date.now() - startedAt,

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build:runner && next build",
     "build:runner": "esbuild sandbox-runner/index.ts --bundle --platform=node --format=esm --target=node24 --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=.runner/runner.mjs",
     "start": "next start",
     "lint": "eslint",
@@ -14,6 +14,7 @@
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.76",
     "@base-ui/react": "^1.8.0",
+    "@vercel/sandbox": "^3.2.2",
     "ai": "^7.0.95",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.6",

@@ -15,6 +15,7 @@ const MANUAL = [
   "VERCEL_PROTECTION_BYPASS",
   "DEMO_LOGIN_TOKEN",
   "AI_GATEWAY_API_KEY",
+  "SANDBOX_SNAPSHOT_ID",
 ] as const;
 
 /** Injected by the platform once the matching resource is connected. */

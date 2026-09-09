@@ -11,11 +11,18 @@ export interface DemoIdentity {
   deploymentId: string;
 }
 
+export interface PrIdentity {
+  owner: string;
+  repo: string;
+  prNumber: number;
+}
+
 function component(value: string, label: string): string {
   if (
     value.length === 0 ||
     value === "." ||
     value === ".." ||
+    value === "by-pr" ||
     /[/\\\u0000-\u001f\u007f]/.test(value)
   ) {
     throw new Error(`${label} is not a safe Blob path component`);
@@ -54,8 +61,37 @@ export function demoArtifactKeys(identity: DemoIdentity) {
   } as const;
 }
 
+export function prDemosPrefix(identity: PrIdentity): string {
+  const owner = component(identity.owner, "owner");
+  const repo = component(identity.repo, "repo");
+  const prNumber = positiveInteger(identity.prNumber, "prNumber");
+  return `demos/${owner}/${repo}/pr-${prNumber}/`;
+}
+
+export function prRunsPrefix(identity: PrIdentity): string {
+  const owner = component(identity.owner, "owner");
+  const repo = component(identity.repo, "repo");
+  const prNumber = positiveInteger(identity.prNumber, "prNumber");
+  return `runs/by-pr/${owner}/${repo}/pr-${prNumber}/`;
+}
+
+export function prRunIndexKey(
+  identity: PrIdentity,
+  runId: string,
+): string {
+  return `${prRunsPrefix(identity)}${component(runId, "runId")}.json`;
+}
+
 export function deploymentSentinelKey(deploymentId: string): string {
   return `runs/${component(deploymentId, "deploymentId")}/sentinel.json`;
+}
+
+export function runRecordKey(runId: string): string {
+  return `runs/${component(runId, "runId")}/run.json`;
+}
+
+export function runEventsPrefix(runId: string): string {
+  return `runs/${component(runId, "runId")}/events/`;
 }
 
 export function runEventKey(

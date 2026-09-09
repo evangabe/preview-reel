@@ -4,8 +4,13 @@ import {
   demoArtifactKeys,
   demoPrefix,
   deploymentSentinelKey,
+  prDemosPrefix,
+  prRunIndexKey,
+  prRunsPrefix,
   runEventKey,
+  runEventsPrefix,
   runLogsKey,
+  runRecordKey,
 } from "./keys";
 
 const identity = {
@@ -54,9 +59,24 @@ describe("run keys", () => {
     expect(runLogsKey("wfr_123")).toBe("runs/wfr_123/logs.jsonl");
   });
 
+  it("builds PR indexes and run record prefixes", () => {
+    expect(prDemosPrefix(identity)).toBe(
+      "demos/evangabe/preview-reel-target/pr-1/",
+    );
+    expect(prRunsPrefix(identity)).toBe(
+      "runs/by-pr/evangabe/preview-reel-target/pr-1/",
+    );
+    expect(prRunIndexKey(identity, "wfr_123")).toBe(
+      "runs/by-pr/evangabe/preview-reel-target/pr-1/wfr_123.json",
+    );
+    expect(runRecordKey("wfr_123")).toBe("runs/wfr_123/run.json");
+    expect(runEventsPrefix("wfr_123")).toBe("runs/wfr_123/events/");
+  });
+
   it("rejects unsafe identities, stages, and sequence overflow", () => {
     expect(() => deploymentSentinelKey("../dpl")).toThrow(/safe Blob path/);
     expect(() => runEventKey("wfr_123", 10_000, "done")).toThrow(/sequence/);
     expect(() => runEventKey("wfr_123", 1, "Recording")).toThrow(/stage/);
+    expect(() => runRecordKey("by-pr")).toThrow(/safe Blob path/);
   });
 });

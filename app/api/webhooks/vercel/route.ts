@@ -14,6 +14,8 @@ import { NextResponse, type NextRequest } from "next/server";
 //
 // Must respond within 30s (R-1.4) and never fail the deploy (no non-2xx
 // for anything other than a bad signature).
+// 200 rather than 501 while unimplemented: the team webhook is already
+// registered, and Vercel retries any non-2xx with backoff for 24 hours.
 export async function POST(_request: NextRequest) {
-  return NextResponse.json({ error: "not implemented" }, { status: 501 });
+  return NextResponse.json({ ok: true, handled: false });
 }

@@ -22,6 +22,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Emitted by withWorkflow() on every build; already self-ignored from git.
+    "app/.well-known/workflow/**",
   ]),
 ]);
 

@@ -1,0 +1,50 @@
+# DECISIONS.md
+
+Running log of choices, tradeoffs, and assumptions. One line each. Appended as work happens, not reconstructed afterwards.
+
+Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
+
+---
+
+## Pre-build (scoping)
+
+- **[Problem]** Chose preview-deployment demo recording over a general demo generator because the trigger, the environment, and the audience are all already defined by the PR. Tradeoff: only useful to teams already on Vercel preview deployments.
+- **[Build vs buy]** Chose to build on `webreel` (Vercel Labs, Apache-2.0) rather than implement frame capture and encoding. Tradeoff: the project reads as a layer on someone else's tool unless the authoring and trigger work is substantial.
+- **[Architecture]** Split exploration from recording: `agent-browser` emits a `webreel` config, `webreel` replays it. Because an agent's live fumbling is unpublishable and a config is reviewable and re-runnable. Tradeoff: two stages, two failure modes, longer runs.
+- **[Trigger]** Chose a `[feat]` PR title tag over a `CHANGELOG.md` diff. Deterministic, zero-cost on the common path, and puts the decision with the author. Tradeoff: only fires when someone remembers to tag.
+- **[Trigger]** Chose title tags over GitHub labels because labels need repo setup. Tradeoff: pollutes PR titles, and a tag added after the fact only fires on the next deployment.
+- **[Identity]** Keyed runs on `(repo, prNumber)` rather than feature slug or deployment ID. PR numbers are stable; titles get edited and deployments repeat per push.
+- **[Model]** The model scopes the demo but does not decide whether to record. Removes the false-positive problem entirely rather than tuning for it.
+- **[Comment]** One comment updated in place, never the PR description. A bot that overwrites human-authored text loses that fight every time.
+- **[Storage]** Blob metadata instead of a database. Tradeoff: cross-run queries for the gallery get awkward; escape hatch is a per-repo index blob, not Postgres.
+- **[Scope]** Cut: credential management UI, TTS voiceover, uploaded audio, stale-demo detection, multiple demos per PR, gallery auth. Each is a real feature; none is needed to prove the loop.
+- **[Scope]** Hardcoded credentials for v1. The correct answer is a scoped demo account with short-lived credentials via Vercel Connect, which is a day of work and not the interesting part.
+
+## Assumptions to verify in the first hour
+
+- **[Sandbox]** Assuming `webreel`'s auto-download of Chrome and ffmpeg to `~/.webreel` works inside a Sandbox microVM, or can be pinned via `CHROME_PATH` / `FFMPEG_PATH` in a snapshot. Unverified — try pointing `webreel` at the Chromium `agent-browser install` already places in the snapshot before letting it fetch its own.
+- **[Trigger]** ~~Assuming the deployment webhook payload carries enough git metadata to resolve the PR title without a GitHub API call.~~ Checked against Vercel's webhook API docs before writing code: it doesn't — `deployment.meta` carries git identifiers (`githubPrId`, `githubCommitRef`, `githubCommitSha`), not title/body. A GitHub call is still required either way; the win is that `githubPrId` (when present) turns it from a branch search into an exact `GET` by PR number.
+- **[Agent]** Assuming `agent-browser`'s accessibility snapshot yields selectors stable enough to replay. Unverified — may need a resolution pass between explore and record.
+- **[Timing]** Assuming end-to-end wall clock under 4 minutes. If it's longer, the in-progress state needs more design than a stage label.
+
+## Spec review, pre-build (docs-only pass against current Vercel/webreel/agent-browser docs)
+
+- **[Bug]** Spec originally said filter webhooks on `target: "preview"`. Vercel's actual values are `production`, `staging`, or `null` — preview deployments are `null`. That filter would have silently dropped every event the project exists to process. Caught by reading the webhook API reference before writing the handler, not by testing it live. Fixed to `target !== "production"`.
+- **[Credentials]** Spec assumed the bypass secret and login could be injected as HTTP headers/cookies into the recorded flow. `webreel`'s config schema has no header or cookie field — only URL, steps, and viewport per video. Chose URL query params with `webreel`'s built-in `${VAR}` env-substitution over forking `webreel` or writing a custom replay layer. Tradeoff: the bypass secret and session token are visible in the browser's address bar in the recorded video (mitigated: it's a single-use redirect that immediately drops the query string via the target app's own redirect to a clean URL) and the target app needs one new route (`/api/demo-login`) it wouldn't otherwise have.
+- **[Auth]** Cut a scripted login step in favor of a server-side token-for-cookie exchange (`/api/demo-login`), resolving what was Open Question 2 by design rather than by testing whether session-state injection works. Removed `TARGET_APP_EMAIL`/`TARGET_APP_PASSWORD` from the env list; replaced with a single `DEMO_LOGIN_TOKEN`.
+- **[Storage]** Spec's status page assumed polling a single Blob object that gets overwritten per stage. Vercel Blob's `cacheControlMaxAge` floor is 60s and overwrites take up to 60s to propagate through the CDN — a live-updating status page built on that would show a stale stage for most of a 3-minute run, directly undermining R-8.2. Changed run-status records to append-only per-stage-transition objects (or reading `getRun()` from the Workflow directly), keeping Blob as the durable terminal record rather than the live one.
+- **[Scope]** Cut gallery filter-by-feature (R-8.1) and per-repo daily run cap (R-10.3) during the review pass, not mid-build. Neither is needed to prove the loop; both were added to the original spec without being load-bearing for the demo. The AI Gateway spend cap remains the actual cost backstop.
+- **[Idempotency]** Spec's idempotency requirement (R-1.5) only covered duplicate webhook deliveries for the same deployment ID. It didn't cover a second deployment for a PR that already has a run *in progress* (a push mid-run) — §8 says "let the current run finish," but nothing enforced that before this pass. Added an in-progress check keyed on `(repo, prNumber)`, separate from R-2.10's completed-record check.
+- **[Timing]** §12's build order summed to 420 minutes against a 360-minute budget — a plan that's already over budget before the first line of code, with no acknowledgment of where to cut. Left the per-step estimates alone (they're the right shape) but named the cut explicitly: drop to the record-only re-trigger fallback at hour 4 rather than let step 1 run long.
+
+## Build
+
+<!-- append below as you go -->
+
+## Connection model
+
+- **[Onboarding]** One team-level Vercel webhook plus an env allowlist, instead of per-repo installation. Tradeoff: target projects must live in the same Vercel team; a real product needs a Vercel Integration.
+- **[Trigger]** Resolve the PR from the branch via the GitHub API rather than trusting git metadata in the webhook payload. Tradeoff: one GitHub call on every allowlisted preview deployment, so the untagged path is cheap rather than free.
+- **[Auth]** Fine-grained PAT over a GitHub App. Tradeoff: single-repo, single-tenant, manual rotation.
+- **[Access]** Protection Bypass for Automation to reach protected preview deployments. Tradeoff: the bypass secret grants access to every preview on that project.
+- **[Webhook]** Ack within 30s and hand off to the Workflow, because Vercel aborts at 30s and retries non-2xx for up to 24 hours. Delivery order is not guaranteed, so idempotency is a hard requirement rather than a nicety.

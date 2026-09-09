@@ -105,11 +105,13 @@ async function main() {
   if (
     prIndex === -1 ||
     !Number.isSafeInteger(prNumber) ||
-    prNumber < 1 ||
-    !process.argv.includes("--record-only")
+    prNumber < 1
   ) {
-    throw new Error("Usage: npx tsx scripts/trigger-run.ts --pr N --record-only");
+    throw new Error(
+      "Usage: npx tsx scripts/trigger-run.ts --pr N [--record-only]",
+    );
   }
+  const recordOnly = process.argv.includes("--record-only");
 
   const ref = { owner: "evangabe", repo: "preview-reel-target" };
   const [pr, deployment] = await Promise.all([
@@ -135,11 +137,15 @@ async function main() {
       headRef: pr.headRef,
       htmlUrl: pr.htmlUrl,
     },
-    mode: "record-only",
-    configSource: {
-      kind: "inline",
-      json: await configForDeployment(deployment),
-    },
+    mode: recordOnly ? "record-only" : "explore-and-record",
+    ...(recordOnly
+      ? {
+          configSource: {
+            kind: "inline" as const,
+            json: await configForDeployment(deployment),
+          },
+        }
+      : {}),
   };
   const response = await fetch("http://localhost:3000/api/dev/trigger-run", {
     method: "POST",

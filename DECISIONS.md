@@ -134,6 +134,7 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 - **[Model]** A further $10 credit addition cleared the paid-model restriction: low-effort smoke calls to `openai/gpt-5.6-luna` and `openai/gpt-6-astra` both returned the exact requested text in 1.43 s and 1.12 s, consuming $0.0006296 total. Tradeoff: this proves Gateway access, not browser-tool reliability.
 - **[Comment]** Recovery always searches the stable PR marker before creating when the remembered comment ID is absent or returns 404, so a lost response or manual deletion cannot produce two bot comments. Tradeoff: recovery scans at most 300 comments, matching the GitHub wrapper's deliberate cap.
 - **[Testing]** Interpreted the comment plan's “no `!`” assertion as human-copy punctuation after excluding required HTML-comment (`<!--`) and Markdown-image (`![`) syntax; applying it literally makes the marker and poster requirements impossible to satisfy. Tradeoff: tests distinguish structural Markdown from visible prose.
+- **[Closeout]** Kept `trigger-run.ts`, `replay-webhook.ts`, and the production-disabled dev trigger route until the blocked live assertions and rerun work are complete; deleting them now would remove the only repeatable verification path. The production build passed, unsigned webhooks returned 401, and the dev trigger returned 404 under `next start`. Tradeoff: temporary harness code remains visible for one more slice.
 
 ## Connection model
 

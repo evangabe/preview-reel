@@ -24,6 +24,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Emitted by withWorkflow() on every build; already self-ignored from git.
     "app/.well-known/workflow/**",
+    // Single-file VM bundle emitted by `npm run build:runner`.
+    ".runner/**",
   ]),
 ]);
 

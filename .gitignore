@@ -20,6 +20,7 @@
 # production
 /build
 **/.webreel/
+/.runner/
 
 # misc
 .DS_Store

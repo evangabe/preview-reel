@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:runner": "esbuild sandbox-runner/index.ts --bundle --platform=node --format=esm --target=node24 --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=.runner/runner.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",

@@ -174,6 +174,7 @@ export async function explore(rawInput: ExploreInput): Promise<ExploreSummary> {
   let actions = 0;
   let invalidFinishAttempts = 0;
   let finalConfig: WebreelConfig | null = null;
+  let terminalFailure: RunnerFailure | null = null;
 
   await mkdir(outDir, { recursive: true });
   await rm(transcriptPath, { force: true });
@@ -318,7 +319,10 @@ export async function explore(rawInput: ExploreInput): Promise<ExploreSummary> {
       maxOutputTokens: 4_000,
       stopWhen: [
         isStepCount(25),
-        () => finalConfig !== null || actions >= MAX_AGENT_ACTIONS,
+        () =>
+          finalConfig !== null ||
+          terminalFailure !== null ||
+          actions >= MAX_AGENT_ACTIONS,
       ],
       providerOptions: {
         gateway: {
@@ -335,6 +339,10 @@ For replay steps:
 - Prefer visible text for buttons and links.
 - For inputs and checkboxes, inspect data-testid, then id, then aria-label, and emit a CSS selector.
 - Verify every emitted CSS selector with isVisible before finish.
+- Use WebReel's exact action names and fields. Exploration tool names such as press and fill are not valid replay actions.
+- Keyboard: {"action":"key","key":"Control+k"}; optionally add "target" as a CSS selector.
+- Text entry: {"action":"type","selector":"[data-testid=\\"example\\"]","text":"value"}.
+- Other valid actions are click, pause, drag, scroll, wait, moveTo, screenshot, navigate, hover, and select.
 - Include only the clean feature demonstration, not login or setup.
 - Keep the result at 12 steps or fewer.
 - Do not invent success. If the feature cannot be located, call finish with found=false.
@@ -468,11 +476,12 @@ ${initialSnapshotResult.stdout.trim()}`,
               actions,
             });
             if (!found) {
-              throw new RunnerFailure(
+              terminalFailure = new RunnerFailure(
                 "explore",
                 "feature-not-found",
                 reason,
               );
+              return { accepted: false, error: reason };
             }
 
             invalidFinishAttempts += 1;
@@ -486,11 +495,12 @@ ${initialSnapshotResult.stdout.trim()}`,
                 error,
               });
               if (invalidFinishAttempts >= 2) {
-                throw new RunnerFailure(
+                terminalFailure = new RunnerFailure(
                   "explore",
                   "invalid-config",
                   error,
                 );
+                return { accepted: false, error };
               }
               return {
                 accepted: false,
@@ -522,11 +532,12 @@ ${initialSnapshotResult.stdout.trim()}`,
                 error,
               });
               if (invalidFinishAttempts >= 2) {
-                throw new RunnerFailure(
+                terminalFailure = new RunnerFailure(
                   "explore",
                   "invalid-config",
                   error,
                 );
+                return { accepted: false, error };
               }
               return {
                 accepted: false,
@@ -565,6 +576,8 @@ ${initialSnapshotResult.stdout.trim()}`,
 
     // Tool callbacks assign this value asynchronously; preserve its declared
     // type instead of TypeScript's pre-callback null narrowing.
+    const failedExploration = terminalFailure as RunnerFailure | null;
+    if (failedExploration) throw failedExploration;
     const completedConfig = finalConfig as WebreelConfig | null;
     if (!completedConfig) {
       throw new RunnerFailure(

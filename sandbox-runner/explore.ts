@@ -23,6 +23,7 @@ import {
   webreelConfigSchema,
   webreelStepsSchema,
 } from "../lib/scope/schema";
+import { AUTH_FAILURE_DETAIL } from "./auth-preflight";
 import { runCommand } from "./command";
 import { isRunnerFailure, RunnerFailure } from "./failure";
 
@@ -247,7 +248,7 @@ export async function explore(rawInput: ExploreInput): Promise<ExploreSummary> {
       throw new RunnerFailure(
         "explore",
         "preview-protected",
-        "Preview redirected to Vercel authentication; check the bypass secret",
+        AUTH_FAILURE_DETAIL["preview-protected"],
       );
     }
     if (url.origin !== target.origin) {
@@ -261,7 +262,7 @@ export async function explore(rawInput: ExploreInput): Promise<ExploreSummary> {
       throw new RunnerFailure(
         "explore",
         "login-failed",
-        "Target app redirected to /login; check the demo login token",
+        AUTH_FAILURE_DETAIL["login-failed"],
       );
     }
     return rawUrl;

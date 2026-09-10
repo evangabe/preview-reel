@@ -13,6 +13,7 @@ import {
 import { DemoPlayer } from "@/components/demo-player";
 import { RecordingConfig } from "@/components/recording-config";
 import { RunMetadata } from "@/components/run-metadata";
+import { RunLogs } from "@/components/run-logs";
 import {
   Alert,
   AlertDescription,
@@ -342,9 +343,23 @@ export function RunStatus({ initialView }: { initialView: RunView }) {
         </Card>
       ) : null}
 
-      {view.configUrl ? (
-        <RecordingConfig configUrl={view.configUrl} />
-      ) : null}
+      <div className="space-y-4">
+        {view.configUrl ? (
+          <>
+            <RecordingConfig configUrl={view.configUrl} />
+            {view.status.state === "failed" ? (
+              <p className="text-sm text-muted-foreground">
+                The recording config is available for inspection even though
+                recording failed.
+              </p>
+            ) : null}
+          </>
+        ) : null}
+        <RunLogs
+          logsUrl={view.logsUrl}
+          inProgress={view.status.state === "in_progress"}
+        />
+      </div>
     </main>
   );
 }

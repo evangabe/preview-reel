@@ -20,6 +20,7 @@ import {
 import {
   demoSpecSchema,
   type WebreelConfig,
+  type WebreelStep,
   webreelConfigSchema,
   webreelStepsSchema,
 } from "../lib/scope/schema";
@@ -96,6 +97,20 @@ export function isNotFoundSnapshot(output: string): boolean {
     /heading ["']404["']/i.test(output) &&
     /This page could not be found/i.test(output)
   );
+}
+
+export function initialWaitError(
+  steps: WebreelStep[],
+  initialSnapshot: string,
+): string | null {
+  const first = steps[0];
+  if (!first || first.action !== "wait" || first.text === undefined) {
+    return null;
+  }
+  if (initialSnapshot.includes(first.text)) {
+    return null;
+  }
+  return `The first replay step waits for "${first.text}", but that content is not present initially. Cause the state with a click, key, or type step before waiting for it.`;
 }
 
 export function redact(value: unknown, secrets: string[]): unknown {
@@ -389,6 +404,7 @@ For replay steps:
 - Screenshot: {"action":"screenshot","output":"name.png"}. Navigate: {"action":"navigate","url":"/same-origin-path"}.
 - Scroll needs "x", "y", or exactly one of "text"/"selector". Select needs exactly one of "text"/"selector" plus "value". Drag needs "from" and "to", each containing exactly one of "text"/"selector".
 - Every object is strict. Do not omit required fields, combine text with selector, or add decorative pause, wait, or screenshot steps.
+- The initial snapshot has already settled. Never make the first replay step wait for text that is absent from that snapshot; first cause the state with a click, key, or type step, then wait for its result. Treat numbered PR instructions as an ordered flow.
 - Include only the clean feature demonstration, not login or setup.
 - Keep the result at 12 steps or fewer.
 - Do not invent success. If the feature cannot be located, call finish with found=false.
@@ -551,6 +567,31 @@ ${initialSnapshotResult.stdout.trim()}`,
               return {
                 accepted: false,
                 repair: `Repair these schema errors and call finish once more:\n${error}`,
+              };
+            }
+
+            const initialWaitFailure = initialWaitError(
+              parsedSteps.data,
+              initialSnapshotResult.stdout,
+            );
+            if (initialWaitFailure) {
+              await log({
+                type: "tool-end",
+                tool: "finish",
+                accepted: false,
+                error: initialWaitFailure,
+              });
+              if (invalidFinishAttempts >= 2) {
+                terminalFailure = new RunnerFailure(
+                  "explore",
+                  "invalid-config",
+                  initialWaitFailure,
+                );
+                return { accepted: false, error: initialWaitFailure };
+              }
+              return {
+                accepted: false,
+                repair: `Repair the replay order and call finish once more:\n${initialWaitFailure}`,
               };
             }
 

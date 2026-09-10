@@ -95,7 +95,13 @@ async function preflightAuth(config: WebreelConfig): Promise<void> {
   }
 }
 
-function recordingFailure(output: string): RunnerFailure {
+export function recordingFailure(output: string): RunnerFailure {
+  if (/Step \d+ \(wait\) failed/i.test(output)) {
+    const reason = /timeout|timed out/i.test(output)
+      ? "assertion-timeout"
+      : "assertion-failed";
+    return new RunnerFailure("record", reason, output);
+  }
   if (/element not found/i.test(output)) {
     return new RunnerFailure("record", "element-not-found", output);
   }

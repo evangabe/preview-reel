@@ -36,10 +36,10 @@ describe("classifyAuthHop", () => {
     );
   });
 
-  it("treats a 401 from anywhere else as the platform wall", () => {
+  it("treats a 401 from another app route as application auth", () => {
     expect(
       classifyAuthHop({ url: `${origin}/`, status: 401, location: null }),
-    ).toBe("preview-protected");
+    ).toBe("application-auth-failed");
   });
 
   it("treats a same-origin redirect to /login as a token problem", () => {

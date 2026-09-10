@@ -21,7 +21,11 @@ export type AuthHop = {
   location: string | null;
 };
 
-export type AuthVerdict = "ok" | "preview-protected" | "login-failed";
+export type AuthVerdict =
+  | "ok"
+  | "preview-protected"
+  | "login-failed"
+  | "application-auth-failed";
 
 export const AUTH_FAILURE_DETAIL: Record<
   Exclude<AuthVerdict, "ok">,
@@ -31,6 +35,8 @@ export const AUTH_FAILURE_DETAIL: Record<
     "Preview deployment is protected — check the bypass secret.",
   "login-failed":
     "Target app rejected the demo login token — check DEMO_LOGIN_TOKEN.",
+  "application-auth-failed":
+    "Target app rejected the entrypoint request — check the app's auth or API credentials.",
 };
 
 const LOGIN_ROUTE = "/api/demo-login";
@@ -64,11 +70,12 @@ export function classifyAuthHop(hop: AuthHop): AuthVerdict {
   }
 
   if (hop.status === 401 || hop.status === 403) {
-    // The app's own login route rejecting us is a token problem; a 401/403
-    // from anywhere else is the platform's wall.
+    // The app's own login route rejecting us is a token problem. A direct
+    // 401/403 from any other route is app-level auth, not the Vercel wall:
+    // Vercel's wall redirects to vercel.com and is handled above.
     return requested.pathname.startsWith(LOGIN_ROUTE)
       ? "login-failed"
-      : "preview-protected";
+      : "application-auth-failed";
   }
 
   return "ok";

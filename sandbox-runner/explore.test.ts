@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { exploreInputSchema, isNotFoundSnapshot, redact } from "./explore";
+import {
+  exploreInputSchema,
+  initialWaitError,
+  isNotFoundSnapshot,
+  redact,
+} from "./explore";
 
 const input = {
   runId: "wfr_123",
@@ -75,5 +80,25 @@ describe("isNotFoundSnapshot", () => {
 
   it("does not treat an ordinary page containing 404 as not found", () => {
     expect(isNotFoundSnapshot("- heading \"Order 404\" [level=2]")).toBe(false);
+  });
+});
+
+describe("initialWaitError", () => {
+  it("rejects a first wait for content absent from the initial snapshot", () => {
+    expect(
+      initialWaitError(
+        [{ action: "wait", text: "8 Low" }],
+        "Showing 12 of 12",
+      ),
+    ).toContain("Cause the state with a click, key, or type step");
+  });
+
+  it("allows a first wait for content already visible initially", () => {
+    expect(
+      initialWaitError(
+        [{ action: "wait", text: "Inventory" }],
+        "heading Inventory",
+      ),
+    ).toBeNull();
   });
 });

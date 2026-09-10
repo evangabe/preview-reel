@@ -89,6 +89,7 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 
 ## Demo readiness
 
+- **[Runner]** Treat a first replay wait for content absent from the settled initial snapshot as an invalid plan and give the model one repair attempt; a free-form model can otherwise assert the post-click state before performing the click. Also classify a direct app 401/403 as `application-auth-failed` rather than `preview-protected`, since Vercel's protection wall redirects to `vercel.com` and API routes can reject their own credentials.
 - **[Planning]** With a day left, chose four items from the assessment rubric over polish: the rerun route (the on-stage "watch it run" moment and the promise the failed-state comment already makes), placeholders as a visible feature, an explicit auth-wall reason in the record path, and model/cost visibility. Cut stale-demo detection to a carry-forward list.
 - **[Process]** Each slice ships as its own PR, validated on the Vercel preview build (API via `vercel curl`, UI on production after merge), and merged before the next branches from `main`.
 - **[Rerun]** Extracted the webhook's in-progress guard into `lib/runs/in-progress.ts` now that the rerun route is its second caller; it returns the active `runId` rather than a boolean so the route can point a 409 at the running run.

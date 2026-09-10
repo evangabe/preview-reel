@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import {
   CheckCircle2,
-  ChevronDown,
+  ChevronRight,
   Circle,
   CircleX,
+  ExternalLink,
   LoaderCircle,
 } from "lucide-react";
 
@@ -72,21 +73,21 @@ function PhaseIcon({ state }: Pick<PhaseView, "state">) {
     case "complete":
       return (
         <CheckCircle2
-          className={`${className} text-emerald-600`}
+          className={`${className} text-emerald-400`}
           aria-hidden="true"
         />
       );
     case "active":
       return (
         <LoaderCircle
-          className={`${className} animate-spin text-amber-600`}
+          className={`${className} animate-spin text-amber-400`}
           aria-hidden="true"
         />
       );
     case "failed":
       return (
         <CircleX
-          className={`${className} text-destructive`}
+          className={`${className} text-rose-400`}
           aria-hidden="true"
         />
       );
@@ -106,7 +107,9 @@ function PhaseRows({ phases }: { phases: PhaseView[] }) {
       {phases.map(({ phase, state }) => (
         <li
           key={phase}
-          className="flex items-center gap-3 border-b py-3 last:border-b-0"
+          className={`flex items-center gap-3 border-b px-2 py-3 last:border-b-0 ${
+            state === "active" || state === "failed" ? "bg-muted/40" : ""
+          }`}
         >
           <PhaseIcon state={state} />
           <span className="flex-1 font-medium">{PHASE_LABEL[phase]}</span>
@@ -129,8 +132,11 @@ function PhaseStatus({
   if (view.status.state === "done") {
     return (
       <Collapsible className="rounded-xl border">
-        <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-3 text-left">
-          <ChevronDown className="size-4" aria-hidden="true" />
+        <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-lg px-4 py-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+          <ChevronRight
+            className="size-4 transition-transform group-aria-expanded:rotate-90"
+            aria-hidden="true"
+          />
           <span className="font-medium">
             {phases.length}/{phases.length} phases complete
           </span>
@@ -151,24 +157,35 @@ function PhaseStatus({
   const active = phases.find(({ state }) => state === "active");
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardContent>
-          <PhaseRows phases={phases} />
-        </CardContent>
-      </Card>
-      {active ? (
-        <Card className="border-dashed bg-muted/30 py-8 text-center">
-          <CardContent className="flex items-center justify-center gap-2 text-sm font-medium">
+    <Card className="grid overflow-hidden md:grid-cols-[minmax(220px,0.8fr)_minmax(0,1.6fr)]">
+      <div className="p-4 sm:p-5">
+        <p className="mb-2 text-xs text-muted-foreground">Run phases</p>
+        <PhaseRows phases={phases} />
+      </div>
+      <div className="flex min-h-64 items-center border-t p-6 sm:p-10 md:border-t-0 md:border-l">
+        {view.status.state === "failed" ? (
+          <FailureAlert view={view} phases={phases} />
+        ) : active ? (
+          <div className="max-w-sm space-y-4">
             <LoaderCircle
-              className="size-4 animate-spin text-amber-600"
+              className="size-5 animate-spin text-amber-400"
               aria-hidden="true"
             />
-            {ACTIVE_COPY[active.phase]}
-          </CardContent>
-        </Card>
-      ) : null}
-    </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold tracking-tight">
+                {ACTIVE_COPY[active.phase]}
+              </h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                The demo will appear here when the recording is uploaded.
+              </p>
+              <p className="text-sm leading-6 text-muted-foreground">
+                This page updates automatically.
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </Card>
   );
 }
 
@@ -184,35 +201,47 @@ function FailureAlert({
   const logsUrl = view.logsUrl ?? view.status.failure.logsUrl;
 
   return (
-    <Alert variant="destructive">
-      <CircleX aria-hidden="true" />
-      <AlertTitle>
-        Failed during{" "}
-        {failedPhase ? PHASE_LABEL[failedPhase.phase].toLowerCase() : "run"}
-      </AlertTitle>
-      <AlertDescription className="space-y-3">
-        <p>
-          <code className="font-mono">{view.status.failure.reason}</code>
+    <div className="max-w-lg space-y-4">
+      <CircleX className="size-5 text-rose-400" aria-hidden="true" />
+      <div className="space-y-2">
+        <h2 className="text-xl font-semibold tracking-tight">
+          Failed during{" "}
+          {failedPhase ? PHASE_LABEL[failedPhase.phase].toLowerCase() : "run"}
+        </h2>
+        <p className="text-sm leading-6 text-muted-foreground">
+          <code className="font-mono text-foreground">
+            {view.status.failure.reason}
+          </code>
           {view.status.failure.detail
             ? ` — ${view.status.failure.detail}`
             : null}
         </p>
-        {logsUrl || view.transcriptUrl ? (
-          <p className="flex flex-wrap gap-4">
-            {logsUrl ? (
-              <a href={logsUrl} target="_blank" rel="noreferrer">
-                Run log
-              </a>
-            ) : null}
-            {view.transcriptUrl ? (
-              <a href={view.transcriptUrl} target="_blank" rel="noreferrer">
-                Exploration transcript
-              </a>
-            ) : null}
-          </p>
-        ) : null}
-      </AlertDescription>
-    </Alert>
+      </div>
+      {logsUrl || view.transcriptUrl ? (
+        <p className="flex flex-wrap gap-4 text-sm">
+          {logsUrl ? (
+            <a
+              href={logsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              Run log ↗
+            </a>
+          ) : null}
+          {view.transcriptUrl ? (
+            <a
+              href={view.transcriptUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              Exploration transcript ↗
+            </a>
+          ) : null}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -265,12 +294,31 @@ export function RunStatus({ initialView }: { initialView: RunView }) {
   );
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-5 py-10 sm:px-8 sm:py-14">
-      <div className="space-y-3">
-        <h1 className="text-3xl font-semibold tracking-tight text-balance">
-          {displayTitle(view)}
-        </h1>
-        <RunMetadata record={view.record} demo={view.demo} />
+    <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-5 py-8 sm:px-8 sm:py-10">
+      <div className="space-y-4">
+        <p className="text-xs text-muted-foreground">Reels / Run details</p>
+        <div className="flex items-start justify-between gap-6">
+          <div className="space-y-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+              {displayTitle(view)}
+            </h1>
+            <RunMetadata
+              record={view.record}
+              status={view.status}
+            />
+          </div>
+          {view.record?.previewUrl ? (
+            <a
+              href={view.record.previewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              Visit preview
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+            </a>
+          ) : null}
+        </div>
       </div>
 
       {pollError ? (
@@ -283,7 +331,6 @@ export function RunStatus({ initialView }: { initialView: RunView }) {
       ) : null}
 
       <PhaseStatus view={view} phases={phases} />
-      <FailureAlert view={view} phases={phases} />
 
       {view.demo ? <DemoPlayer demo={view.demo} /> : null}
       {view.status.state === "done" && !view.demo ? (

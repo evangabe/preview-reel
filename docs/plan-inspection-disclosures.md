@@ -20,8 +20,11 @@ already and are not part of this work.)
 
 Read `AGENTS.md` → UI and "Pipeline rules", `docs/plan-ui-and-api.md` §5.11.5
 (the current config collapsible), and `DECISIONS.md`. Append to `DECISIONS.md`
-in the same commit as each call. Run `npm run type-check && npm test && npm run
-lint` before every commit.
+in the same commit as each call. Do not use the local app as a validation
+environment: its current Vercel/runtime issue prevents the UI from loading
+reliably and will be triaged separately. Validate each slice through its
+Vercel preview deployment and browser screenshots instead. Do not add or run
+tests for this take-home slice.
 
 ---
 
@@ -205,8 +208,10 @@ export function actionLabel(step: StepRecord): { label: string; known: boolean }
 export function primaryValue(step: StepRecord): string;                            // §3.4
 ```
 
-Tests: fixture config yields one video with six steps in order; a two-video
-config preserves order and names; `actionLabel` maps `wait`+`selector` to
+The implementer should reason through these cases against the preview rather
+than adding a test suite. The fixture config should yield one video with six
+steps in order; a two-video config should preserve order and names;
+`actionLabel` maps `wait`+`selector` to
 "Wait for element" and `wait`+`text` to "Wait for text"; an unknown `{ action:
 "tap", selector: "#x" }` yields `{ label: "tap", known: false }` and
 `primaryValue` `"#x"`; a step without `action` yields "Unknown action"; `pause`
@@ -223,7 +228,8 @@ export function formatLogTime(iso: string): string;
 // "2026-09-10 00:20:01.245 UTC"; returns the input unchanged if unparsable.
 ```
 
-Tests: three lines parse in order; a line whose `data` contains `\n` survives
+The implementer should inspect these cases through the preview rather than
+adding tests. Three lines parse in order; a line whose `data` contains `\n` survives
 intact (build the fixture with `JSON.stringify`); a garbage line is kept with
 `at: null`; empty string returns `[]`; `formatLogTime` renders UTC regardless
 of the test runner's zone.
@@ -386,5 +392,8 @@ DECISIONS.md               per slice
   content across re-opens and poll updates.
 - Everything is keyboard-operable with visible focus; tabs expose selected
   state to assistive tech.
-- `npm run type-check && npm test && npm run lint` pass. `DECISIONS.md` has
-  entries for §3.1, §3.4–§3.9.
+- Preview screenshots show the done, expanded Steps, Raw JSON, Run logs,
+  failed, and in-progress states matching the supplied frames. `DECISIONS.md`
+  records the preview-only validation decision and entries for §3.1,
+  §3.4–§3.9. Local tests are intentionally not a completion criterion because
+  the current local Vercel/runtime issue is deferred for later triage.

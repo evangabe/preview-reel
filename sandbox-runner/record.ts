@@ -14,6 +14,11 @@ import {
   type WebreelConfig,
   webreelConfigSchema,
 } from "../lib/scope/schema";
+import {
+  AUTH_FAILURE_DETAIL,
+  followAuthChain,
+  substitutePlaceholders,
+} from "./auth-preflight";
 import { runCommand } from "./command";
 import { RunnerFailure } from "./failure";
 
@@ -63,6 +68,33 @@ function normalizeOutput(config: WebreelConfig): WebreelConfig {
   };
 }
 
+function entryUrl(config: WebreelConfig): string {
+  const [video] = Object.values(config.videos);
+  return new URL(video.url, config.baseUrl).toString();
+}
+
+/**
+ * Names the auth wall before webreel hits it. The resolved URL, statuses,
+ * and Location headers never reach a detail or a log line: they carry the
+ * bypass secret and the login token.
+ */
+async function preflightAuth(config: WebreelConfig): Promise<void> {
+  let verdict: Awaited<ReturnType<typeof followAuthChain>>;
+  try {
+    verdict = await followAuthChain(
+      substitutePlaceholders(entryUrl(config), process.env),
+    );
+  } catch (error) {
+    process.stdout.write(
+      `Auth preflight skipped (${error instanceof Error ? error.name : "error"}); continuing to record\n`,
+    );
+    return;
+  }
+  if (verdict !== "ok") {
+    throw new RunnerFailure("record", verdict, AUTH_FAILURE_DETAIL[verdict]);
+  }
+}
+
 function recordingFailure(output: string): RunnerFailure {
   if (/element not found/i.test(output)) {
     return new RunnerFailure("record", "element-not-found", output);
@@ -103,6 +135,8 @@ export async function record(rawInput: RecordInput): Promise<RecordSummary> {
           : String(error);
     throw new RunnerFailure("record", "invalid-config", detail);
   }
+
+  await preflightAuth(parsedConfig);
 
   const config = normalizeOutput(parsedConfig);
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);

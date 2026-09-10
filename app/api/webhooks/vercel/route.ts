@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getRun, start } from "workflow/api";
+import { start } from "workflow/api";
 
+import { findInProgressRun } from "@/lib/runs/in-progress";
 import {
   claimDeployment,
   hasCompletedDemo,
   indexRunForPr,
-  listRunIdsForPr,
 } from "@/lib/storage/runs";
 import {
   findOpenPullRequestByBranch,
@@ -159,21 +159,7 @@ export async function POST(request: Request) {
       return response("already-demoed");
     }
 
-    const pointers = await listRunIdsForPr(identity);
-    const cutoff = Date.now() - 15 * 60_000;
-    const fresh = pointers.filter(
-      (pointer) => Date.parse(pointer.claimedAt) > cutoff,
-    );
-    const statuses = await Promise.all(
-      fresh.map((pointer) =>
-        getRun(pointer.runId).status.catch(() => "failed" as const),
-      ),
-    );
-    if (
-      statuses.some(
-        (status) => status === "pending" || status === "running",
-      )
-    ) {
+    if (await findInProgressRun(identity)) {
       logDecision(context, "run-in-progress");
       return response("run-in-progress");
     }

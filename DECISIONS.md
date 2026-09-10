@@ -187,6 +187,10 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 
 ## Demo readiness — build
 
+- **[Rerun]** Extracted the webhook's in-progress guard into `lib/runs/in-progress.ts` now that the rerun route is its second caller; it returns the active `runId` rather than a boolean so the route can point a 409 at the running run. It is the only module outside `app/` and `workflows/` that imports `workflow/api`, and it stays out of `lib/storage/runs.ts`, which standalone scripts import. Tradeoff: two entry points now share one 15-minute freshness window.
+- **[Rerun]** A record-only re-run reuses the *source run's* `previewUrl` and `pr` snapshot rather than refetching the PR: identity is `(repo, prNumber)` and the title is display material, so a re-run after a title edit records the old title. Tradeoff: stale title on the re-run's comment until the next automatic run.
+- **[Rerun]** Order of checks is 404 → 400 → 409 in-progress → 409 no-config → start, and the index write happening *after* `start()` is reported as `202 { runId }` even if the pointer write fails (logged as `run-index-failed`): the run is already going, and hiding it behind a 5xx would invite a second click. Tradeoff: a failed pointer write weakens the in-progress guard for that PR for one run.
+
 ## Connection model
 
 - **[Onboarding]** One team-level Vercel webhook plus an env allowlist, instead of per-repo installation. Tradeoff: target projects must live in the same Vercel team; a real product needs a Vercel Integration.

@@ -46,7 +46,8 @@ builder), per `AGENTS.md`.
 Run `vercel link` then `vercel env pull` to populate `.env.local`, or copy
 `.env.example` and fill it in by hand.
 
-Six secrets are yours to set, in the Vercel dashboard or `.env.local`:
+The application settings below are yours to set, in the Vercel dashboard or
+`.env.local`:
 
 ```bash
 VERCEL_WEBHOOK_SECRET=       # shown once when the team webhook is created
@@ -55,6 +56,7 @@ GITHUB_TOKEN=                # fine-grained PAT: PRs read, Issues write
 VERCEL_PROTECTION_BYPASS=    # generated on the *target* project, copied here
 DEMO_LOGIN_TOKEN=            # long-lived secret; target app trades it for a session at /api/demo-login
 AI_GATEWAY_API_KEY=          # spend-capped, see below
+APP_BASE_URL=https://preview-reel.vercel.app  # public production alias for links
 ```
 
 Two more come from the platform and must **not** be set by hand — a typed-in
@@ -68,7 +70,7 @@ value shadows the injected one:
   expires after 12 hours — re-pull if Sandbox provisioning starts failing
   authentication.
 
-The six above plus `BLOB_READ_WRITE_TOKEN` are validated at boot
+The settings above plus `BLOB_READ_WRITE_TOKEN` are validated at boot
 (`lib/env.ts`, called from `instrumentation.ts`). Validation runs at server
 startup rather than at build, because the webhook secret cannot exist before
 the first deploy.

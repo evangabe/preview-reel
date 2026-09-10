@@ -1,5 +1,3 @@
-import { ExternalLink } from "lucide-react";
-
 import { Card } from "@/components/ui/card";
 import type { DemoMetadata } from "@/lib/storage/metadata";
 
@@ -35,10 +33,9 @@ export function DemoPlayer({ demo }: { demo: DemoMetadata }) {
             href={demo.prUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-muted-foreground"
+            className="mt-4 inline-flex text-sm font-mono font-medium transition-colors hover:text-muted-foreground"
           >
-            {demo.repo} #{demo.prNumber}
-            <ExternalLink className="size-3.5" aria-hidden="true" />
+            {demo.prTitle}
           </a>
           <dl className="mt-7 space-y-5">
             <div>

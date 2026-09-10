@@ -16,6 +16,7 @@ const MANUAL = [
   "DEMO_LOGIN_TOKEN",
   "AI_GATEWAY_API_KEY",
   "SANDBOX_SNAPSHOT_ID",
+  "APP_BASE_URL",
 ] as const;
 
 /** Injected by the platform once the matching resource is connected. */
@@ -38,10 +39,8 @@ const LOCAL_ONLY: Record<string, string> = {
 export type Env = Record<(typeof MANUAL)[number] | keyof typeof INJECTED, string>;
 
 export function appBaseUrl(): string {
-  const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  return productionHost
-    ? `https://${productionHost.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`
-    : "http://localhost:3000";
+  const configured = process.env.APP_BASE_URL?.trim().replace(/\/+$/, "");
+  return configured || "http://localhost:3000";
 }
 
 /**

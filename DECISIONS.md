@@ -187,3 +187,4 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 - **[Auth]** Fine-grained PAT over a GitHub App. Tradeoff: single-repo, single-tenant, manual rotation.
 - **[Access]** Protection Bypass for Automation to reach protected preview deployments. Tradeoff: the bypass secret grants access to every preview on that project.
 - **[Webhook]** Ack within 30s and hand off to the Workflow, because Vercel aborts at 30s and retries non-2xx for up to 24 hours. Delivery order is not guaranteed, so idempotency is a hard requirement rather than a nicety.
+- **[Links]** Chose an explicit `APP_BASE_URL` over Vercel's injected production-host variable because the latter was unavailable inside a Workflow step and caused PR comments to link to localhost. Tradeoff: the production alias must be configured in each environment.

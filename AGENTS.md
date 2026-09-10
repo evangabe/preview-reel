@@ -31,7 +31,7 @@ New dependencies need a reason. Prefer the platform primitive over the package.
 
 ## How to work
 
-**Vertical slices, riskiest first.** Get one path working end to end before deepening any layer. The order is in `docs/spec.md` §12. Do not build the gallery before the pipeline produces a video.
+**Vertical slices, riskiest first.** Get one path working end to end before deepening any layer. Do not build the gallery before the pipeline produces a video.
 
 **Keep it running.** The app should be deployable and clickable after every commit. If a change leaves it broken, finish or revert it in the same commit.
 
@@ -159,7 +159,7 @@ Second repo, `preview-reel-target/`: a small Next.js app deployed to its own Ver
 
 ## Out of scope
 
-Database. Auth or accounts. Multi-tenancy. TTS or uploaded audio. Stale-demo detection. More than one demo per PR. Analytics. Dark mode toggle. Anything in `docs/spec.md` §11.
+Database. Auth or accounts. Multi-tenancy. TTS or uploaded audio. Stale-demo detection. More than one demo per PR. Analytics. Dark mode toggle. Anything in the punts table in `docs/spec.md`.
 
 If a task seems to need one of these, that's a signal the task is wrong. Log it and ask.
 

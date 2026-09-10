@@ -5,8 +5,8 @@ export function formatDuration(milliseconds: number): string {
     : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
-/** Reported Gateway spend; sub-cent amounts keep six decimals. */
+/** Reported Gateway spend, displayed at currency precision. */
 export function formatCost(value: number | null): string {
   if (value === null) return "not reported";
-  return `$${value.toFixed(value < 0.01 ? 6 : 4)}`;
+  return `$${value.toFixed(2)}`;
 }

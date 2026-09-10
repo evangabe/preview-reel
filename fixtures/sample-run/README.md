@@ -8,4 +8,3 @@ gallery/status/player UI without executing the pipeline. See `AGENTS.md` →
 - `video.mp4` — 1440×900, 60fps, 10.05s
 - `video.png` — WebReel thumbnail at 1.5s
 - `metadata.json` — fixture run record
-- `phase-0-notes.md` — selectors and the hand-driven `agent-browser` probe

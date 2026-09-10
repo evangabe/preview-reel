@@ -170,6 +170,7 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 ## Inspection disclosures — build
 
 - **[UI]** Pinned the app to shadcn's existing `.dark` token set by adding one class on `<html>`, because every Figma frame is dark and the readme frame calls the direction "Vercel-inspired". Chose a fixed theme over a toggle: a toggle is out of scope in `AGENTS.md`, and `prefers-color-scheme` would make preview screenshots depend on the reviewer's OS. Tradeoff: no light mode.
+- **[UI]** Mapped Tailwind's `font-sans` token to Next's `--font-geist-sans` variable instead of the self-referential `--font-sans` value, so the default Geist face is actually applied. Tradeoff: the app now depends on the explicit Geist font variables defined by `next/font`.
 
 ## Connection model
 

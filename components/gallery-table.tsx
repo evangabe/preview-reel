@@ -115,16 +115,14 @@ export function GalleryTable({ demos }: { demos: DemoMetadata[] }) {
                           target="_blank"
                           rel="noreferrer"
                           onClick={(event) => event.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 rounded-md bg-muted/80 px-2 py-1 text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-muted/80 px-2 py-1 font-mono text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-label={`Open pull request: ${demo.prTitle}`}
                         >
                           <GitPullRequest
                             className="size-4"
                             aria-hidden="true"
                           />
-                          <span className="hidden sm:inline">
-                            {demo.repo}{" "}
-                          </span>
-                          #{demo.prNumber}
+                          <span className="truncate">{demo.prTitle}</span>
                         </a>
                       </td>
                       <td className="whitespace-nowrap py-3 pr-3 text-right text-muted-foreground sm:pr-4">

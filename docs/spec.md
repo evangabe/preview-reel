@@ -212,6 +212,7 @@ DEMO_LOGIN_TOKEN=            # long-lived secret; target app trades it for a ses
 AI_GATEWAY_API_KEY=
 BLOB_READ_WRITE_TOKEN=
 VERCEL_OIDC_TOKEN=           # or team token, for Sandbox provisioning
+APP_BASE_URL=                # public Preview Reel production alias for links
 ```
 
 - **R-CFG.1** Validate all of the above at boot, not at point of use. A missing secret should fail the deploy, not the third stage of a run.

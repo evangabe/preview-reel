@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { Triangle } from "lucide-react";
 import Link from "next/link";
 
 function targetRepo(): string | null {
@@ -34,10 +34,13 @@ export function SiteHeader() {
             href={`https://github.com/${repo}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="flex items-center gap-2 text-xs text-foreground transition-colors hover:text-muted-foreground"
           >
+            <Triangle
+              className="size-3 fill-current"
+              aria-hidden="true"
+            />
             {repo}
-            <ExternalLink className="size-3.5" aria-hidden="true" />
           </a>
         ) : null}
       </div>

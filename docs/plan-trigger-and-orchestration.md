@@ -121,9 +121,9 @@ Do not relitigate mid-loop. If one proves wrong, log it in `DECISIONS.md` and st
     a typed `GitHubError { status }`. Four endpoints don't justify a
     dependency. If a fifth endpoint needs pagination helpers, log it and
     reconsider.
-13. **Status-page URLs come from `VERCEL_PROJECT_PRODUCTION_URL`**, an
-    injected variable, with `http://localhost:3000` off-platform. No new
-    manual env var.
+13. **Status-page URLs come from `APP_BASE_URL`**, an explicit production alias
+    configured on the project. This avoids relying on a Vercel system variable
+    that was not available inside the Workflow step runtime.
 
 ---
 

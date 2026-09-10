@@ -12,6 +12,7 @@ import {
 
 import { DemoPlayer } from "@/components/demo-player";
 import { RecordingConfig } from "@/components/recording-config";
+import { RerunButtons } from "@/components/rerun-buttons";
 import { RunMetadata } from "@/components/run-metadata";
 import { RunLogs } from "@/components/run-logs";
 import {
@@ -308,17 +309,22 @@ export function RunStatus({ initialView }: { initialView: RunView }) {
               status={view.status}
             />
           </div>
-          {view.record?.previewUrl ? (
-            <a
-              href={view.record.previewUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              Visit preview
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-            </a>
-          ) : null}
+          <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
+            {view.status.state !== "in_progress" && view.record ? (
+              <RerunButtons runId={view.runId} configUrl={view.configUrl} />
+            ) : null}
+            {view.record?.previewUrl ? (
+              <a
+                href={view.record.previewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                Visit preview
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+              </a>
+            ) : null}
+          </div>
         </div>
       </div>
 

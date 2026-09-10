@@ -1,6 +1,20 @@
 export const DEFAULT_MODEL_ID = "openai/gpt-5.6-luna";
 export const DEFAULT_REASONING_EFFORT = "medium" as const;
 
+const DISPLAY_NAMES: Record<string, string> = {
+  "openai/gpt-5.6-luna": "GPT-5.6 Luna",
+};
+
+/** Human-readable model name; falls back to the id's suffix. */
+export function modelDisplayName(id: string): string {
+  return DISPLAY_NAMES[id] ?? id.split("/").pop() ?? id;
+}
+
+/** Provider prefix of a Gateway model id ("openai/gpt-…" → "openai"). */
+export function modelProvider(id: string): string {
+  return id.includes("/") ? id.slice(0, id.indexOf("/")) : "";
+}
+
 export const defaultModelProviderOptions = {
   openai: {
     reasoningEffort: DEFAULT_REASONING_EFFORT,

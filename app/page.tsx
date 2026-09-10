@@ -1,9 +1,19 @@
 import { EmptyState } from "@/components/empty-state";
 import { GalleryTable } from "@/components/gallery-table";
 import { SiteHeader } from "@/components/site-header";
+import { sumReportedCosts } from "@/lib/ai/model";
+import { formatCost } from "@/lib/format";
 import { listCompletedDemos } from "@/lib/storage/runs";
 
 export const dynamic = "force-dynamic";
+
+function summaryLine(demos: { modelCostUsd: number | null }[]): string {
+  const reels = `${demos.length} ${demos.length === 1 ? "reel" : "reels"}`;
+  const spend = sumReportedCosts(...demos.map((demo) => demo.modelCostUsd));
+  return spend === null
+    ? reels
+    : `${reels} · ${formatCost(spend)} in model spend for these reels`;
+}
 
 export default async function GalleryPage() {
   const demos = await listCompletedDemos();
@@ -23,6 +33,9 @@ export default async function GalleryPage() {
             <p className="mt-3 text-base text-muted-foreground">
               Demos recorded from [feat] PRs on their Vercel preview
               deployments.
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {summaryLine(demos)}
             </p>
           </div>
           <GalleryTable demos={demos} />

@@ -12,7 +12,11 @@ import {
   scopeDemoWithGateway,
 } from "@/lib/scope/scope-demo";
 import type { DemoSpec } from "@/lib/scope/schema";
-import { sumReportedCosts } from "@/lib/ai/model";
+import {
+  DEFAULT_MODEL_ID,
+  DEFAULT_REASONING_EFFORT,
+  sumReportedCosts,
+} from "@/lib/ai/model";
 import {
   runInSandbox,
   type SandboxRunResult,
@@ -390,6 +394,10 @@ async function runPipeline(
         status: "completed",
         mode: input.mode,
         timings: result.timings,
+        model: {
+          id: DEFAULT_MODEL_ID,
+          reasoningEffort: DEFAULT_REASONING_EFFORT,
+        },
         modelCostUsd: sumReportedCosts(
           scope.scopeCostUsd,
           result.modelCostUsd,

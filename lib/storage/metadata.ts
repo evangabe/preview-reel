@@ -3,6 +3,15 @@ import { z } from "zod";
 const millisecondsSchema = z.number().int().nonnegative();
 const artifactUrlSchema = z.url();
 
+export const modelInfoSchema = z
+  .object({
+    id: z.string().min(1),
+    reasoningEffort: z.enum(["low", "medium", "high"]),
+  })
+  .strict();
+
+export type ModelInfo = z.infer<typeof modelInfoSchema>;
+
 export const demoMetadataSchema = z
   .object({
     runId: z.string().min(1),
@@ -27,6 +36,9 @@ export const demoMetadataSchema = z
         totalMs: millisecondsSchema,
       })
       .strict(),
+    // Storage-schema evolution, not model-output coercion: objects written
+    // before this field existed read back as `null` and render "not recorded".
+    model: modelInfoSchema.nullable().default(null),
     modelCostUsd: z.number().nonnegative().nullable(),
     logsUrl: z.url().nullable(),
     generatedAt: z.iso.datetime(),

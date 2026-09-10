@@ -17,6 +17,10 @@
     "recordMs": 10050,
     "totalMs": 11050
   },
+  "model": {
+    "id": "openai/gpt-5.6-luna",
+    "reasoningEffort": "medium"
+  },
   "modelCostUsd": null,
   "logsUrl": "https://example.public.blob.vercel-storage.com/runs/wrun_fixture_bulk_select/logs.jsonl",
   "generatedAt": "2026-09-09T17:07:00.000Z",

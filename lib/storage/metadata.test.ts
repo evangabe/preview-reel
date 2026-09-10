@@ -28,6 +28,7 @@ const base: DemoMetadata = {
     recordMs: 10_050,
     totalMs: 11_050,
   },
+  model: { id: "openai/gpt-5.6-luna", reasoningEffort: "medium" },
   modelCostUsd: null,
   logsUrl: "https://blob.example.com/logs.jsonl",
   generatedAt: "2026-09-09T17:07:00.000Z",
@@ -50,6 +51,28 @@ describe("demoMetadataSchema", () => {
   it("rejects metadata without artifact URLs", () => {
     const { artifacts: _artifacts, ...incomplete } = base;
     expect(demoMetadataSchema.safeParse(incomplete).success).toBe(false);
+  });
+
+  it("reads objects written before the model field as model: null", () => {
+    const { model: _model, ...legacy } = base;
+    const parsed = demoMetadataSchema.safeParse(legacy);
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.model).toBeNull();
+  });
+
+  it("still rejects unknown keys alongside the defaulted model", () => {
+    expect(
+      demoMetadataSchema.safeParse({ ...base, extra: true }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a model with an unknown reasoning effort", () => {
+    expect(
+      demoMetadataSchema.safeParse({
+        ...base,
+        model: { id: "openai/gpt-5.6-luna", reasoningEffort: "max" },
+      }).success,
+    ).toBe(false);
   });
 });
 

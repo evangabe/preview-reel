@@ -2,7 +2,7 @@
 
 import { GitPullRequest, Search } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ function matchesQuery(demo: DemoMetadata, query: string): boolean {
 }
 
 export function GalleryTable({ demos }: { demos: DemoMetadata[] }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const filteredDemos = useMemo(
     () => demos.filter((demo) => matchesQuery(demo, query)),
@@ -79,40 +80,42 @@ export function GalleryTable({ demos }: { demos: DemoMetadata[] }) {
                   {group.demos.map((demo) => (
                     <tr
                       key={demo.runId}
-                      className="group transition-colors hover:bg-muted/50"
+                      className="group cursor-pointer transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+                      role="link"
+                      tabIndex={0}
+                      onClick={() => router.push(`/runs/${demo.runId}`)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          router.push(`/runs/${demo.runId}`);
+                        }
+                      }}
+                      aria-label={`Open ${demo.demoTitle}`}
                     >
                       <td className="w-28 py-3 pl-3 sm:w-36 sm:pl-4">
-                        <Link
-                          href={`/runs/${demo.runId}`}
-                          className="block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          aria-label={`Open ${demo.demoTitle}`}
-                        >
-                          <div className="relative aspect-video overflow-hidden rounded-md bg-muted">
-                            <Image
-                              src={demo.artifacts.posterUrl}
-                              alt=""
-                              fill
-                              sizes="144px"
-                              loader={({ src }) => src}
-                              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                            />
-                          </div>
-                        </Link>
+                        <div className="relative aspect-video overflow-hidden rounded-md bg-muted">
+                          <Image
+                            src={demo.artifacts.posterUrl}
+                            alt=""
+                            fill
+                            sizes="144px"
+                            loader={({ src }) => src}
+                            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                          />
+                        </div>
                       </td>
                       <td className="px-3 py-3 sm:px-4">
-                        <Link
-                          href={`/runs/${demo.runId}`}
-                          className="font-medium leading-snug outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                        >
+                        <span className="font-medium leading-snug">
                           {demo.demoTitle}
-                        </Link>
+                        </span>
                       </td>
                       <td className="px-2 py-3 sm:px-4">
                         <a
                           href={demo.prUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-muted-foreground outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={(event) => event.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-muted/80 px-2 py-1 text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           <GitPullRequest
                             className="size-4"

@@ -91,6 +91,13 @@ function replayUrl(previewUrl: string, entryPoint: string): string {
   );
 }
 
+export function isNotFoundSnapshot(output: string): boolean {
+  return (
+    /heading ["']404["']/i.test(output) &&
+    /This page could not be found/i.test(output)
+  );
+}
+
 export function redact(value: unknown, secrets: string[]): unknown {
   const serialized = JSON.stringify(value);
   if (serialized === undefined) return null;
@@ -175,7 +182,7 @@ export async function explore(rawInput: ExploreInput): Promise<ExploreSummary> {
   const bypassSecret = requiredEnv("VERCEL_PROTECTION_BYPASS");
   const gatewayKey = requiredEnv("AI_GATEWAY_API_KEY");
   const secrets = [loginToken, bypassSecret, gatewayKey];
-  const entryPoint = input.demoSpec.entryPoint ?? "/";
+  let entryPoint = input.demoSpec.entryPoint ?? "/";
   const browserEnv = {
     ...process.env,
     AGENT_BROWSER_SESSION: input.runId,
@@ -321,6 +328,28 @@ export async function explore(rawInput: ExploreInput): Promise<ExploreSummary> {
     url: await currentUrl(),
     snapshot: initialSnapshotResult.stdout.trim(),
   });
+
+  // Scope is model-generated and can name a stale route. If the initial
+  // route is the standard Next.js 404 page, recover at the target app's
+  // root and use that same route in the replay URL. Otherwise exploration
+  // can succeed after navigating away while recording still starts on the
+  // dead scoped route.
+  if (isNotFoundSnapshot(initialSnapshotResult.stdout)) {
+    entryPoint = "/";
+    const fallbackOpen = await runCommand(
+      "agent-browser",
+      ["open", authUrl(input.previewUrl, entryPoint, loginToken, bypassSecret)],
+      { env: browserEnv },
+    );
+    if (fallbackOpen.exitCode !== 0) {
+      throw new RunnerFailure(
+        "explore",
+        "feature-not-found",
+        fallbackOpen.stderr.trim() || "Could not open the preview root",
+      );
+    }
+    await assertAuthenticated();
+  }
 
   const gateway = createGateway({ apiKey: gatewayKey });
 

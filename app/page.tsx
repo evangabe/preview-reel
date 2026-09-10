@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/empty-state";
 import { GalleryTable } from "@/components/gallery-table";
-import { SiteHeader } from "@/components/site-header";
+import { SiteHeader, targetRepo } from "@/components/site-header";
 import { sumReportedCosts } from "@/lib/ai/model";
 import { formatCost } from "@/lib/format";
 import { Card } from "@/components/ui/card";
@@ -32,6 +32,7 @@ function KpiCard({
 
 export default async function GalleryPage() {
   const demos = await listCompletedDemos();
+  const repo = targetRepo();
   const dayAgo = currentTimestamp() - 24 * 60 * 60 * 1_000;
   const recentDemos = demos.filter(
     (demo) => Date.parse(demo.generatedAt) >= dayAgo,
@@ -57,8 +58,21 @@ export default async function GalleryPage() {
             </h1>
             <p className="mt-3 text-base text-muted-foreground">
               Use <code className="font-mono">[feat]</code> in PR titles in{" "}
-              <code className="font-mono">{"{{repo_name}}"}</code> to create a
-              feature demo
+              {repo ? (
+                <span className="font-mono">
+                  <a
+                    href={`https://github.com/${repo}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-foreground underline decoration-muted-foreground/50 underline-offset-4 transition-colors hover:decoration-foreground"
+                  >
+                    {repo}
+                  </a>
+                </span>
+              ) : (
+                <code className="font-mono">your repository</code>
+              )}{" "}
+              to create a feature demo
             </p>
           </div>
           <div className="mb-8 grid gap-3 sm:grid-cols-2">

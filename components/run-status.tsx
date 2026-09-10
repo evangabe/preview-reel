@@ -134,9 +134,9 @@ function PhaseStatus({
   if (view.status.state === "done") {
     return (
       <Collapsible className="rounded-xl border">
-        <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-lg px-4 py-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+        <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-lg px-4 py-3 text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
           <ChevronRight
-            className="size-4 transition-transform group-aria-expanded:rotate-90"
+            className="size-4 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-90"
             aria-hidden="true"
           />
           <span className="font-medium">

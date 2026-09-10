@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { GitHubIcon } from "@/components/icons/github";
 
-function targetRepo(): string | null {
+export function targetRepo(): string | null {
   return (
     process.env.PREVIEW_REEL_REPOS?.split(",")
       .map((repo) => repo.trim())
@@ -22,6 +22,12 @@ export function SiteHeader() {
     <header className="border-b">
       <div className="mx-auto flex h-12 max-w-5xl items-center justify-between px-5 sm:px-8">
         <div className="flex items-center gap-3">
+          <Link href="/" className="font-semibold tracking-tight">
+            Preview reels
+          </Link>
+          <span aria-hidden="true" className="text-muted-foreground/50">
+            /
+          </span>
           {projectUrl && projectName ? (
             <a
               href={projectUrl}
@@ -36,15 +42,6 @@ export function SiteHeader() {
               {projectName}
             </a>
           ) : null}
-          <span aria-hidden="true" className="text-muted-foreground/50">
-            /
-          </span>
-          <Link
-            href="/"
-            className="font-semibold tracking-tight"
-          >
-            Preview reels
-          </Link>
         </div>
         {repo ? (
           <a

@@ -79,10 +79,9 @@ export function ConfigSteps({ videos }: { videos: VideoSteps[] }) {
     <div className="space-y-6">
       {videos.map((video) => (
         <section key={video.name} className="space-y-3">
-          <h3 className="font-mono text-sm">{video.name}</h3>
           {video.entryUrl ? (
             <div className="space-y-1.5 rounded-lg bg-muted/40 p-3">
-              <p className="text-xs text-muted-foreground">Entry URL</p>
+              <p className="text-xs text-muted-foreground">Entrypoint</p>
               <p className="font-mono text-xs leading-relaxed break-all">
                 <Placeholders text={video.entryUrl} />
               </p>

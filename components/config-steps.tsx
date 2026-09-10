@@ -10,9 +10,30 @@ import {
 import {
   actionLabel,
   primaryValue,
+  splitPlaceholders,
   stepDescription,
   type VideoSteps,
 } from "@/lib/config/steps";
+
+/** Text with each `${VAR}` token rendered as a distinct mark. */
+function Placeholders({ text }: { text: string }) {
+  return (
+    <>
+      {splitPlaceholders(text).map((part, index) =>
+        part.placeholder ? (
+          <mark
+            key={index}
+            className="rounded bg-amber-400/15 px-1 text-amber-200 [font-style:normal]"
+          >
+            {part.text}
+          </mark>
+        ) : (
+          <span key={index}>{part.text}</span>
+        ),
+      )}
+    </>
+  );
+}
 
 function StepRow({ index, step }: { index: number; step: unknown }) {
   const { label, known } = actionLabel(step);
@@ -35,7 +56,7 @@ function StepRow({ index, step }: { index: number; step: unknown }) {
         </span>
         {value ? (
           <span className="max-w-[45%] truncate font-mono text-xs text-muted-foreground">
-            {value}
+            <Placeholders text={value} />
           </span>
         ) : null}
         <ChevronRight
@@ -46,7 +67,7 @@ function StepRow({ index, step }: { index: number; step: unknown }) {
       <CollapsibleContent className="pb-4 pl-10">
         <p className="mb-2 text-xs text-muted-foreground">Parameters</p>
         <pre className="overflow-x-auto rounded-lg bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words">
-          {JSON.stringify(step, null, 2)}
+          <Placeholders text={JSON.stringify(step, null, 2)} />
         </pre>
       </CollapsibleContent>
     </Collapsible>
@@ -59,6 +80,21 @@ export function ConfigSteps({ videos }: { videos: VideoSteps[] }) {
       {videos.map((video) => (
         <section key={video.name} className="space-y-3">
           <h3 className="font-mono text-sm">{video.name}</h3>
+          {video.entryUrl ? (
+            <div className="space-y-1.5 rounded-lg bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">Entry URL</p>
+              <p className="font-mono text-xs leading-relaxed break-all">
+                <Placeholders text={video.entryUrl} />
+              </p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Credentials appear as{" "}
+                <code className="font-mono">{"${DEMO_LOGIN_TOKEN}"}</code> and{" "}
+                <code className="font-mono">{"${VERCEL_PROTECTION_BYPASS}"}</code>
+                . They are substituted from environment variables at replay
+                time and never written to this file.
+              </p>
+            </div>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             Configured actions in replay order. Expand a step to inspect its
             parameters.

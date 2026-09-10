@@ -9,7 +9,39 @@
 
 export interface VideoSteps {
   name: string;
+  /** Resolved against the config's baseUrl when the video URL is relative. */
+  entryUrl: string | null;
   steps: unknown[];
+}
+
+/** `${NAME}` tokens that webreel substitutes from environment variables. */
+export const PLACEHOLDER = /\$\{[A-Z0-9_]+\}/g;
+
+/** Splits text into literal runs and placeholder tokens, in order. */
+export function splitPlaceholders(
+  text: string,
+): Array<{ text: string; placeholder: boolean }> {
+  const parts: Array<{ text: string; placeholder: boolean }> = [];
+  let last = 0;
+  for (const match of text.matchAll(PLACEHOLDER)) {
+    if (match.index > last) {
+      parts.push({ text: text.slice(last, match.index), placeholder: false });
+    }
+    parts.push({ text: match[0], placeholder: true });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) {
+    parts.push({ text: text.slice(last), placeholder: false });
+  }
+  return parts;
+}
+
+export function entryUrl(video: unknown, baseUrl: unknown): string | null {
+  const url = isRecord(video) && typeof video.url === "string" ? video.url : null;
+  const base = typeof baseUrl === "string" && baseUrl.length > 0 ? baseUrl : null;
+  if (url === null) return base;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url) || base === null) return url;
+  return `${base.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;
 }
 
 export type ExtractStepsResult =
@@ -36,7 +68,11 @@ export function extractSteps(text: string): ExtractStepsResult {
     if (!isRecord(video) || !Array.isArray(video.steps)) {
       return { ok: false, reason: `Video "${name}" has no steps array.` };
     }
-    videos.push({ name, steps: video.steps });
+    videos.push({
+      name,
+      entryUrl: entryUrl(video, parsed.baseUrl),
+      steps: video.steps,
+    });
   }
   return { ok: true, videos };
 }

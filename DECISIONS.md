@@ -105,6 +105,7 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 
 ## Close-out
 
+- **[Comment]** Kept the existing authenticated GitHub user as the comment author because GitHub issue comments cannot choose an arbitrary author; a true bot identity requires changing authentication to a GitHub App or dedicated bot account. Standardized every state with a `Preview reels` heading, a status table, separated action links, a muted dashboard footer, and fenced failure details so navigation URLs cannot be partially auto-linked.
 - **[Process]** Deleted the dev trigger harness (`app/api/dev/trigger-run`, `scripts/trigger-run.ts`) and the stale hand-probe fixtures; the rerun route is the repeatable verification path now. Kept `scripts/replay-webhook.ts` as the one dev tool.
 - **[Docs]** Rewrote `docs/spec.md` as an as-built requirements table and moved setup to `docs/setup.md`. The original 340-line draft mixed requirements with a schedule and open questions that were all resolved.
 - **[Docs]** Trimmed this log from ~160 entries to the ones a reviewer could reasonably ask about. The full log is kept locally, not in git; nothing was rewritten, only removed.

@@ -1,30 +1,20 @@
 import { NextResponse } from "next/server";
-import { getRun } from "workflow/api";
 
-import { readRunEvents, readRunRecord } from "@/lib/storage/runs";
-import {
-  deriveRunStatus,
-  type WorkflowRunStatus,
-} from "@/lib/storage/status";
+import { loadRunView } from "@/lib/storage/run-view";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ runId: string }> },
 ) {
   const { runId } = await params;
-  const [record, events, workflowStatus] = await Promise.all([
-    readRunRecord(runId),
-    readRunEvents(runId),
-    getRun(runId).status.catch(() => null) as Promise<WorkflowRunStatus | null>,
-  ]);
-  const status = deriveRunStatus(events, workflowStatus);
+  const view = await loadRunView(runId);
   const headers = { "Cache-Control": "no-store" };
 
-  if (!status) {
+  if (!view) {
     return NextResponse.json(
       { error: "run not found" },
       { status: 404, headers },
     );
   }
-  return NextResponse.json({ runId, record, status }, { headers });
+  return NextResponse.json(view, { headers });
 }

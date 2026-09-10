@@ -335,7 +335,14 @@ export async function readRunRecord(
 ): Promise<RunRecord | null> {
   try {
     const blob = await head(runRecordKey(runId));
-    return readJson<RunRecord>(blob.url);
+    const record = await readJson<RunRecord>(blob.url);
+    return {
+      ...record,
+      identity: {
+        ...record.identity,
+        runId: record.identity.runId ?? record.runId,
+      },
+    };
   } catch (error) {
     if (error instanceof BlobNotFoundError) return null;
     throw error;

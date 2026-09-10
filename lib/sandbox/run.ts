@@ -69,7 +69,7 @@ export function redactRunnerOutput(
     if (secret) redacted = redacted.replaceAll(secret, "<redacted>");
   }
   return redacted.replace(
-    /([?&](?:token|x-vercel-protection-bypass)=)[^&"'\s]+/gi,
+    /([?&](?:token|x-vercel-protection-bypass)=)[^&"'\s\\]+/gi,
     "$1<redacted>",
   );
 }

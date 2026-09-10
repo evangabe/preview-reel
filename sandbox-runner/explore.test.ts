@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { exploreInputSchema } from "./explore";
+import { exploreInputSchema, redact } from "./explore";
 
 const input = {
   runId: "wfr_123",
@@ -31,5 +31,35 @@ describe("exploreInputSchema", () => {
         prDescription: "x".repeat(10_001),
       }),
     ).toThrow();
+  });
+});
+
+describe("redact", () => {
+  it("redacts a token that ends a URL inside a nested JSON string", () => {
+    // The browser parked on the login route after a 401: the token is the
+    // last query param and the URL sits inside a serialized snapshot.
+    const snapshot = JSON.stringify({
+      origin: "https://t.example/api/demo-login?next=%2F&token=s3cret",
+    });
+    const event = redact({ type: "initial-state", snapshot }, ["s3cret"]);
+
+    expect(event).toEqual({
+      type: "initial-state",
+      snapshot: JSON.stringify({
+        origin: "https://t.example/api/demo-login?next=%2F&token=<redacted>",
+      }),
+    });
+  });
+
+  it("redacts known secrets and query values that are not followed by &", () => {
+    expect(
+      redact(
+        { url: "https://t.example/x?x-vercel-protection-bypass=abc", key: "k3y" },
+        ["k3y"],
+      ),
+    ).toEqual({
+      url: "https://t.example/x?x-vercel-protection-bypass=<redacted>",
+      key: "<redacted>",
+    });
   });
 });

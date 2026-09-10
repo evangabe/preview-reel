@@ -91,7 +91,7 @@ function replayUrl(previewUrl: string, entryPoint: string): string {
   );
 }
 
-function redact(value: unknown, secrets: string[]): unknown {
+export function redact(value: unknown, secrets: string[]): unknown {
   const serialized = JSON.stringify(value);
   if (serialized === undefined) return null;
 
@@ -99,8 +99,10 @@ function redact(value: unknown, secrets: string[]): unknown {
   for (const secret of secrets) {
     redacted = redacted.replaceAll(secret, "<redacted>");
   }
+  // Runs over *serialized* JSON, so a value inside a nested JSON string ends
+  // at `\"` — the backslash must not be consumed or the escape breaks.
   redacted = redacted.replace(
-    /([?&](?:token|x-vercel-protection-bypass)=)[^"&\s]+/g,
+    /([?&](?:token|x-vercel-protection-bypass)=)[^"&\s\\]+/g,
     "$1<redacted>",
   );
   return JSON.parse(redacted);
@@ -258,7 +260,10 @@ export async function explore(rawInput: ExploreInput): Promise<ExploreSummary> {
         `Browser left the preview origin for ${url.origin}`,
       );
     }
-    if (url.pathname === "/login") {
+    // A rejected token leaves the browser parked on the login route with a
+    // 401 body (observed; DECISIONS `[Auth wall]`); a redirect to /login is
+    // the other shape the target could take.
+    if (url.pathname === "/login" || url.pathname.startsWith("/api/demo-login")) {
       throw new RunnerFailure(
         "explore",
         "login-failed",

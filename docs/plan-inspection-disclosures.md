@@ -6,15 +6,17 @@ rendered by `components/run-status.tsx`. Nothing here touches the player, the
 polling loop, the Workflow, the sandbox runner, storage keys, or the API
 response shape. `RunView` already carries everything needed.
 
-Design reference: Figma file `R9c3VVxW6boAhWbkIwN5O5` ("Preview Reels",
-page `0:1`). Its "Read me / Design direction" frame (`1:12`) says:
-Vercel-inspired, existing functionality only, two routes (gallery and run
-details). The player/source layout in the mockups predates this work — take
-only the two disclosures from it. Pull the frames with `get_design_context`
-before starting; the Figma MCP call quota was exhausted while this plan was
-written, so the mockups were not inspected here. Where the mockup and this
-brief disagree on behaviour, the brief wins; where they disagree on layout,
-the mockup wins.
+Design reference: Figma file `R9c3VVxW6boAhWbkIwN5O5` ("Preview Reels"). The
+eight exported frames are the source of truth for layout; the relevant ones
+are: run details, done, both disclosures collapsed; Recording config open on
+Steps; Steps with one row expanded; Recording config open on Raw JSON; Run
+logs open; run details, failed; run details, in progress. The mockups'
+breadcrumb, "Visit preview" button, status/mode/started pill row, and the
+player-plus-source two-column card predate this work — **do not build them**.
+Take only the two disclosures and the failed-run caption. Where a mockup and
+this brief disagree on behaviour, the brief wins; on layout, the mockup wins.
+(The gallery frame lacks loading, error, and empty states; those exist in code
+already and are not part of this work.)
 
 Read `AGENTS.md` → UI and "Pipeline rules", `docs/plan-ui-and-api.md` §5.11.5
 (the current config collapsible), and `DECISIONS.md`. Append to `DECISIONS.md`
@@ -25,269 +27,340 @@ lint` before every commit.
 
 ## 1. What exists — do not re-verify
 
-Checked at commit `8fb0af6`.
+Checked at commit `bb1ff50`.
 
 | Fact | Evidence |
 |---|---|
 | `RecordingConfig({ configUrl })` is a `Collapsible` with a "Recording config" trigger, a "Download JSON" `<a>` in the header, and lazy `fetch(configUrl)` on first open. Loading = `Skeleton`, error = destructive `Alert` "Config unavailable", success = `<pre className="max-h-96 overflow-auto …">` of the raw text. | `components/recording-config.tsx` |
-| `containsResolvedCredential(text)` rejects a config whose `token=` or `x-vercel-protection-bypass=` query value is not the `${…}` placeholder, and renders the Alert instead. This is the credential guard to preserve. | same file, lines 18–33 |
-| Config shape (WebReel v1): `{ "$schema", videos: { [name]: { url, viewport, output, thumbnail, defaultDelay, steps: Step[] } } }`. A step is a flat object with `action` plus action-specific fields (`selector`, `text`, `ms`, `timeout`, `description`, …). The step list is whatever the explorer emitted; actions and field sets are not enumerated anywhere the UI can rely on. | `fixtures/sample-run/config.json`, `sandbox-runner/explore.ts` |
-| `RunView.logsUrl: string \| null` is populated from `readRunLogsUrl(runId)` — a public, immutable `runs/{runId}/logs.jsonl`. It is written once, in the `finally` of the sandbox step, after the runner exits — on success, failure, and timeout alike. It is therefore `null` for the whole in-progress lifetime of a run and non-null on every terminal run that reached the sandbox step. | `workflows/record-demo.ts` lines 320–356, `lib/storage/runs.ts::persistRunLogs` |
-| Each log line is `JSON.stringify({ at: ISO-8601 UTC, stage: "explore" \| "record", stream: "stdout" \| "stderr" \| "artifact", data: string })`. `data` is a raw process chunk and may contain embedded newlines. Secrets are redacted before the line is produced. The file may be empty (zero bytes) when the runner logged nothing. | `workflows/record-demo.ts`, `lib/sandbox/run.ts::SandboxLog` |
-| `FailureAlert` already links "Run log" to `logsUrl` on failed runs. Leave it. | `components/run-status.tsx` |
-| Generated shadcn primitives: `alert`, `badge`, `button`, `card`, `collapsible`, `input`, `separator`, `skeleton`. `Collapsible` wraps `@base-ui/react/collapsible` — the trigger is a real `<button>` with `aria-expanded` and keyboard handling for free. `Button` has `focus-visible:ring-3` styling and `aria-expanded:` variants. No `tabs` component exists. | `components/ui/*` |
+| `containsResolvedCredential(text)` rejects a config whose `token=` or `x-vercel-protection-bypass=` query value is not the `${…}` placeholder and renders the Alert instead. This is the credential guard to preserve. | same file, lines 18–33 |
+| Config shape (WebReel v1): `{ "$schema", baseUrl?, videos: { [name]: { url, viewport, output, thumbnail, defaultDelay, steps: Step[] } } }`. Steps are flat objects with `action` plus action-specific fields. | `fixtures/sample-run/config.json`, Raw JSON mockup |
+| The repo already declares the WebReel step contract it asks the model for: twelve actions — `pause { ms }`, `click { text \| selector, modifiers? }`, `key { key, target? }`, `drag { from, to }`, `type { text, selector, within?, charDelay? }`, `scroll { x?, y?, text? \| selector? }`, `wait { text \| selector, timeout? }`, `moveTo`, `screenshot { output }`, `navigate { url }`, `hover`, `select { …, value }` — each optionally carrying `description` and delay fields. `webreel` itself may accept more; the UI must not assume this list is closed. | `lib/scope/schema.ts::webreelStepSchema` |
+| `RunView.logsUrl: string \| null` comes from `readRunLogsUrl(runId)` — a public, immutable `runs/{runId}/logs.jsonl` written once in the `finally` of the sandbox step, after the runner exits, on success, failure, and timeout alike. It is `null` for the whole in-progress lifetime of a run and non-null on every terminal run that reached the sandbox step. | `workflows/record-demo.ts` lines 320–356, `lib/storage/runs.ts::persistRunLogs` |
+| Each log line is `JSON.stringify({ at: ISO-8601 UTC, stage: "explore" \| "record", stream: "stdout" \| "stderr" \| "artifact", data: string })`. `data` is a raw process chunk and may contain embedded newlines (the mockup's "Thumbnail: … / Done: …" pair is one line). Secrets are redacted before the line is produced. The file may be zero bytes. | `workflows/record-demo.ts`, `lib/sandbox/run.ts::SandboxLog` |
+| `FailureAlert` already links "Run log" and "Exploration transcript" on failed runs, matching the failed mockup. Leave it. | `components/run-status.tsx` |
+| Generated shadcn primitives: `alert`, `badge`, `button`, `card`, `collapsible`, `input`, `separator`, `skeleton`. `Collapsible` wraps `@base-ui/react/collapsible` — the trigger is a real `<button>` with `aria-expanded` and keyboard handling for free. `Button` ships `focus-visible:ring-3`. No `tabs` component exists. | `components/ui/*` |
 
 ---
 
-## 2. Decisions fixed for this work
+## 2. What the mockups specify
 
-1. **No new shadcn components.** The brief names Collapsible, Skeleton,
-   Alert, Button. The Steps / Raw JSON switch is two `Button variant="ghost"
-   size="sm"` elements inside `<div role="tablist">`, each with `role="tab"`,
-   `aria-selected`, `aria-controls`, `tabIndex={selected ? 0 : -1}`, and
-   Left/Right/Home/End arrow handling (≈15 lines). Panels get `role="tabpanel"`
-   and `aria-labelledby`. If this grows past 30 lines, generate `tabs` instead
-   and log why.
-2. **One fetch, two views.** The config is fetched once as text, guarded by
-   `containsResolvedCredential` on the *text* exactly as today, then
-   `JSON.parse`d. Steps renders from the parsed object; Raw JSON renders the
-   original text (not re-serialised — keep the runner's formatting). If
-   `JSON.parse` throws, the Steps tab shows an inline `Alert` "Config is not
-   valid JSON" and Raw JSON still shows the text. Never hide the raw text
-   because the parse failed.
-3. **Steps come from every `videos[*].steps` array, in file order.** Almost
-   always one video; if there are several, render a small muted heading with
-   the video key above each group. Do not flatten across videos.
-4. **Summaries are derived, never looked up.** A step row shows: 1-based
-   index, `action` verbatim in monospace, and a summary string built by a pure
-   function `summarizeStep(step)`:
-   - `description` if it is a non-empty string; otherwise
-   - the first present of `selector`, `text`, `url`, `key`, `value` as
-     `field: value`; otherwise
-   - `ms`/`timeout` as `field: value`; otherwise
-   - "No parameters" when `action` is the only key, else "{n} parameters".
-   No `switch` on action names. `pause`, `click`, `wait` in the fixture are
-   sample data, not constants; the function must produce a usable row for an
-   action it has never seen.
-5. **Every row is its own `Collapsible`, collapsed by default.** Expanding
-   shows all fields of the step (including `action` and `description`) as a
-   definition list in key order from the JSON. Values render by type: strings
-   as text (so `${DEMO_LOGIN_TOKEN}` and screenshot output paths like
-   `../video.mp4` appear as-is — they are plain configuration values), numbers
-   and booleans verbatim, `null` as `null`, arrays and objects recursively
-   nested with indentation. Rows grow with content; no max-height on rows.
-   Raw JSON keeps `max-h-96 overflow-auto`.
-6. **Run logs is a sibling disclosure, not a tab.** New client component
-   `components/run-logs.tsx`, `RunLogs({ logsUrl, inProgress })`, rendered by
-   `RunStatus` directly below `RecordingConfig` (always rendered, even when
-   `logsUrl === null`, so the unavailable copy has a home). Collapsed by
-   default; fetches `logsUrl` on first open; keeps the parsed lines in state
-   for the life of the page. Do not refetch on re-open. Do not refetch when
-   the poll updates `view` — logs are immutable once written.
-7. **Log rendering is `at` beside `data`, nothing else.** Two-column grid
-   per line: `<time dateTime={at}>` formatted `HH:mm:ss.SSS` UTC in
-   monospace muted text, then `data` in `<pre className="whitespace-pre-wrap
-   break-words">`. `stage` and `stream` are not shown. No severity colouring
-   from `stderr`, no "took 3.2s" deltas, no mapping to video time, no
-   "completed"/"failed" badges — the phase list and `FailureAlert` already
-   own those facts. Lines that fail `JSON.parse` render their raw text with
-   the timestamp column blank rather than being dropped.
-8. **Three non-content states, each inside the disclosure body.**
-   - `logsUrl === null && inProgress`: muted paragraph "Logs are saved after
-     the runner finishes. They will appear here once the run ends." No fetch.
-   - `logsUrl === null && !inProgress`: "No run log was saved for this run."
-     (covers runs that failed before the sandbox step, e.g. scoping).
-   - fetch failed: destructive `Alert` "Run log unavailable" with the error
-     message and a `Button variant="outline" size="sm"` "Try again" that
-     re-runs the fetch. Same pattern goes into `RecordingConfig`, whose
-     error state currently has no retry.
-   - empty file (`text.trim() === ""`): "The runner produced no output."
-   `inProgress` is `view.status.state === "in_progress"`; when the poll flips
-   it and `logsUrl` becomes non-null while the disclosure is open, fetch then.
-9. **Both disclosures share one fetch hook.** `useLazyText(url)` in
-   `components/use-lazy-text.ts`: `{ status: "idle" | "loading" | "ok" |
-   "error", text, error, load(), retry() }`; `load()` is a no-op when
-   `status !== "idle"` or `url === null`. Two callers justify the extraction
-   (AGENTS.md: write the second before extracting the first — this is the
-   second).
-10. **Pure helpers live in `lib/config/steps.ts` and `lib/logs/parse.ts`,
-    tested.** `extractSteps(configText) → { videos: Array<{ name, steps }> } |
-    { error }`, `summarizeStep(step)`, `parseLogLines(text) → Array<{ at:
-    string | null, data: string }>`. Components stay presentational.
+Transcribed so the implementer does not have to squint. Dark theme, cards are
+`rounded-xl border` on the page background, matching the existing
+"4/4 phases complete" collapsible.
 
----
+**Recording config, collapsed.** `›  Recording config` left; `Download JSON ↓`
+right, muted. Same as today.
 
-## 3. Contracts
+**Recording config, open, Steps tab.** Under the header: a tab row `Steps
+Raw JSON`, selected tab underlined, unselected muted. Then the video key in
+monospace (`command-palette-k-for-part-lookup`). Then a muted caption:
+"Configured actions in replay order. Expand a step to inspect its
+parameters." Then the step rows, one per line, divided by hairlines:
 
-### 3.1 `lib/config/steps.ts` — pure, tested
-
-```ts
-export type StepRecord = Record<string, unknown> & { action?: unknown };
-export interface VideoSteps { name: string; steps: StepRecord[] }
-export function extractSteps(text: string): { ok: true; videos: VideoSteps[] } | { ok: false; reason: string };
-// ok:false when text is not JSON, `videos` is not an object, or a video's `steps` is not an array.
-export function summarizeStep(step: StepRecord): string;   // §2.4
-export function actionLabel(step: StepRecord): string;     // String(step.action) or "unknown action"
+```
+ 1   Press key                                        Control+k  ›
+ 2   Wait for element               [data-testid="palette-input"]  ›
+ 3   Take screenshot                             palette-open.png  ›
+ 4   Type text                                              6202  ›
+ 5   Pause                                                300 ms  ›
+ …
+10   Click                                                 Close  ›
 ```
 
-Tests: fixture config yields one video with six steps in order; a config with
-two videos preserves order and names; `summarizeStep` prefers `description`,
-falls back to `selector: …`, then `ms: …`, then the parameter count; an
-unknown action `{ action: "hover", selector: "#x" }` produces `selector: #x`;
-non-JSON returns `ok:false`.
+Index muted, label in foreground, primary value right-aligned in muted
+monospace, chevron. Below the list a muted caption: "Screenshot steps
+describe capture actions; output filenames are configuration values."
 
-### 3.2 `lib/logs/parse.ts` — pure, tested
+**Steps, one row expanded.** Chevron rotates; beneath the row a block with a
+muted "Parameters" label and the step pretty-printed as JSON, 2-space indent,
+monospace, on a slightly darker panel:
+
+```
+{
+  "action": "type",
+  "text": "6202",
+  "selector": "[data-testid=\"palette-input\"]"
+}
+```
+
+Other rows stay collapsed — rows are independent.
+
+**Recording config, open, Raw JSON tab.** Same tab row, `Raw JSON`
+underlined. Full original text in a monospace `<pre>`, long `url` lines
+wrapping, `${DEMO_LOGIN_TOKEN}` and `${VERCEL_PROTECTION_BYPASS}` shown
+literally, clipped at a fixed height with internal scroll.
+
+**Run logs, collapsed.** `›  Run logs` left; `Saved output` right, muted.
+
+**Run logs, open.** Muted caption "Saved after the runner finishes." Then one
+row per persisted line: `2026-09-10  00:20:01.245 UTC` in muted monospace,
+then the message in monospace. Multiline `data` stays under one timestamp.
+No stream column, no colour by severity, no durations.
+
+**Failed run.** Phases card and failure copy (already built), then the
+Recording config disclosure, then a muted caption *outside* the card: "The
+recording config is available for inspection even though recording failed."
+The mockup omits Run logs here; the brief says add it (§3.5), so it renders
+beneath the config with real content since `logsUrl` is set on every run that
+reached the sandbox.
+
+**In-progress run.** The mockup shows neither disclosure. The brief requires
+the Run logs disclosure to explain that logs arrive after the runner
+finishes, so it renders with header trailing text "Not saved yet" and the
+in-progress copy inside (§3.5). Recording config renders only when
+`configUrl !== null`, as today (it appears mid-run once the config is
+persisted before recording starts).
+
+---
+
+## 3. Decisions fixed for this work
+
+1. **No new shadcn components.** The Steps / Raw JSON switch is two `Button
+   variant="ghost" size="sm"` elements inside `<div role="tablist">`, each
+   with `role="tab"`, `aria-selected`, `aria-controls`, `tabIndex={selected ?
+   0 : -1}`, Left/Right/Home/End handling, and an underline on
+   `aria-selected="true"` per the mockup. Panels get `role="tabpanel"` and
+   `aria-labelledby`. If this grows past 30 lines, generate `tabs` and log why.
+2. **One fetch, two views.** Fetch the config once as text, run
+   `containsResolvedCredential` on the text exactly as today, then
+   `JSON.parse`. Steps renders from the parsed object; Raw JSON renders the
+   original text unmodified (keep the runner's formatting). If the parse
+   fails, Steps shows an inline `Alert` "Config is not valid JSON" and Raw
+   JSON still shows the text. Never hide the raw text because parsing failed.
+3. **Steps come from every `videos[*].steps` array, in file order.** Render
+   the video key in monospace above each group as the mockup does. Do not
+   flatten across videos.
+4. **Labels come from the repo's step contract; values come from the step.**
+   `actionLabel(step)` maps the twelve actions in `webreelStepSchema` to the
+   mockup's phrasing — `key`→"Press key", `wait`→"Wait for element" when
+   `selector` is set / "Wait for text" when `text` is set, `screenshot`→"Take
+   screenshot", `type`→"Type text", `pause`→"Pause", `click`→"Click",
+   `navigate`→"Navigate", `hover`→"Hover", `scroll`→"Scroll",
+   `moveTo`→"Move to", `drag`→"Drag", `select`→"Select". Anything else renders
+   `String(step.action)` verbatim in monospace, or "Unknown action" when
+   `action` is missing — never dropped, still expandable. `primaryValue(step)`
+   returns the first present of `key`, `selector`, `text`, `output`, `url`,
+   `value`, then `ms` formatted `"{ms} ms"`, then `timeout`, then `x`/`y` as
+   `"x, y"`, else `""`. When `description` is present it renders as a muted
+   second line under the label; it never replaces the value column. The
+   contract list is a label lookup, not a filter: the sample's action names,
+   filenames, and ten-step length are data, not constants.
+5. **Every row is its own `Collapsible`, collapsed by default.** The expanded
+   block is `JSON.stringify(step, null, 2)` in a `<pre
+   className="whitespace-pre-wrap break-words">` under a muted "Parameters"
+   label — this preserves key order, nesting (`target`, `from`/`to`),
+   placeholders, and screenshot output paths as plain values without a
+   bespoke renderer. Rows grow with content; no max-height. Raw JSON keeps a
+   bounded `max-h-96 overflow-auto`.
+6. **Run logs is a sibling disclosure, always rendered.** New
+   `components/run-logs.tsx`, `RunLogs({ logsUrl, inProgress })`, rendered by
+   `RunStatus` directly below `RecordingConfig` on every status, so the
+   unavailable and in-progress copy has a home. Collapsed by default; fetches
+   on first open; keeps parsed lines in state for the life of the page. No
+   refetch on re-open, no refetch when the poll updates `view` — the file is
+   immutable. If `logsUrl` flips from `null` to a URL while the disclosure is
+   open (poll reaches a terminal state), fetch then.
+7. **Log rendering is `at` beside `data`, nothing else.** Two-column grid per
+   line: `<time dateTime={at}>` formatted `YYYY-MM-DD HH:mm:ss.SSS UTC` in
+   muted monospace with `whitespace-nowrap`, then `data` in `<pre
+   className="whitespace-pre-wrap break-words font-mono">`. `stage` and
+   `stream` are not shown. No severity colouring from `stderr`, no deltas
+   between timestamps, no mapping to video time, no completion badges — the
+   phase list and `FailureAlert` own those facts. Lines that fail `JSON.parse`
+   render raw with an empty timestamp cell rather than being dropped.
+8. **Header trailing text reflects availability.** "Saved output" when
+   `logsUrl` is set (mockup); "Not saved yet" when `inProgress`; "Unavailable"
+   when `logsUrl === null` on a terminal run. Muted, not a badge.
+9. **Non-content states live inside the disclosure body.**
+   - `logsUrl === null && inProgress`: "Logs are saved after the runner
+     finishes. They will appear here once the run ends." No fetch.
+   - `logsUrl === null && !inProgress`: "No run log was saved for this run."
+     (runs that failed before the sandbox step, e.g. scoping).
+   - fetch failed: destructive `Alert` "Run log unavailable" with the message
+     and a `Button variant="outline" size="sm"` "Try again". The same retry
+     goes into `RecordingConfig`'s fetch-error Alert; the credential Alert
+     gets no retry because the bytes will not change.
+   - `text.trim() === ""`: "The runner produced no output."
+   - loading: three row-height `Skeleton` bars, not one block.
+10. **Both disclosures share one fetch hook.** `useLazyText(url)` in
+    `components/use-lazy-text.ts`: `{ status: "idle" | "loading" | "ok" |
+    "error", text, error, load(), retry() }`; `load()` is a no-op unless
+    `status === "idle"` and `url !== null`. Two callers justify the extraction.
+11. **Pure helpers in `lib/config/steps.ts` and `lib/logs/parse.ts`, tested.**
+    Components stay presentational.
+
+---
+
+## 4. Contracts
+
+### 4.1 `lib/config/steps.ts` — pure, tested
+
+```ts
+export type StepRecord = Record<string, unknown>;
+export interface VideoSteps { name: string; steps: StepRecord[] }
+export function extractSteps(text: string):
+  | { ok: true; videos: VideoSteps[] }
+  | { ok: false; reason: string };   // not JSON, `videos` not an object, or a video's `steps` not an array
+export function actionLabel(step: StepRecord): { label: string; known: boolean };  // §3.4
+export function primaryValue(step: StepRecord): string;                            // §3.4
+```
+
+Tests: fixture config yields one video with six steps in order; a two-video
+config preserves order and names; `actionLabel` maps `wait`+`selector` to
+"Wait for element" and `wait`+`text` to "Wait for text"; an unknown `{ action:
+"tap", selector: "#x" }` yields `{ label: "tap", known: false }` and
+`primaryValue` `"#x"`; a step without `action` yields "Unknown action"; `pause`
+formats `"300 ms"`; non-JSON returns `ok:false`.
+
+### 4.2 `lib/logs/parse.ts` — pure, tested
 
 ```ts
 export interface LogLineView { at: string | null; data: string }
 export function parseLogLines(text: string): LogLineView[];
-// Split on "\n", drop trailing empty line only, JSON.parse each; on failure
-// { at: null, data: rawLine }. Never reorders, never dedupes, never drops.
-export function formatLogTime(iso: string): string;  // "17:07:03.412" in UTC; returns iso unchanged if unparsable
+// Split on "\n", drop the trailing empty line only, JSON.parse each; on
+// failure { at: null, data: rawLine }. Never reorders, dedupes, or drops.
+export function formatLogTime(iso: string): string;
+// "2026-09-10 00:20:01.245 UTC"; returns the input unchanged if unparsable.
 ```
 
-Tests: three well-formed lines parse in order; a line with `\n` inside `data`
-survives (build the fixture with `JSON.stringify` so the newline is escaped);
-a garbage line is kept with `at: null`; empty string returns `[]`;
-`formatLogTime` renders UTC, not local time.
+Tests: three lines parse in order; a line whose `data` contains `\n` survives
+intact (build the fixture with `JSON.stringify`); a garbage line is kept with
+`at: null`; empty string returns `[]`; `formatLogTime` renders UTC regardless
+of the test runner's zone.
 
-### 3.3 `components/use-lazy-text.ts` — client hook
+### 4.3 `components/use-lazy-text.ts` — client hook
 
-Wraps `fetch(url, { cache: "no-store" })`, throws on `!response.ok` with
-"… returned {status}". Exposes `load` (idempotent) and `retry` (resets to
-`idle` then loads). No abort controller needed — content is immutable and the
-component stays mounted.
+Wraps `fetch(url, { cache: "no-store" })`; throws "… returned {status}" on
+`!response.ok`. `retry()` resets to `idle` then loads. No abort controller —
+content is immutable and the component stays mounted.
 
-### 3.4 `components/recording-config.tsx` — extend
+### 4.4 `components/recording-config.tsx` — extend
 
-Header unchanged: `CollapsibleTrigger` "Recording config" left, "Download
-JSON" `<a>` right. Body, on open:
+Header unchanged. Body on open, per §2: tablist → video key → caption → rows
+→ footer caption (Steps), or bounded `<pre tabIndex={0}>` (Raw JSON). Tab
+choice is local state; switching never refetches. States per §3.9. The
+Steps-only "Config is not valid JSON" Alert from §3.2.
 
-```
-[ Steps ] [ Raw JSON ]                      ← tablist, Steps selected by default
-── Steps panel ─────────────────────────────
- 1  pause   Let the inventory table settle          ˅
- 2  click   Select the first inventory row          ˅
-    ┌ action       click
-    │ selector     [data-testid="select-P-1001"]
-    │ description  Select the first inventory row
- 3  click   …
-── Raw JSON panel ──────────────────────────
- <pre max-h-96 overflow-auto> original text </pre>
-```
-
-States inside the body: `Skeleton` (three row-height bars, not one block)
-while loading; destructive `Alert` "Config unavailable" + "Try again" on
-fetch error; the existing credential Alert (no retry — retrying returns the
-same bytes); "Config is not valid JSON" Alert on the Steps panel only. The
-tab switch is local state; switching tabs never refetches.
-
-### 3.5 `components/run-logs.tsx` — new
+### 4.5 `components/run-logs.tsx` — new
 
 ```tsx
 export function RunLogs({ logsUrl, inProgress }: { logsUrl: string | null; inProgress: boolean })
 ```
 
-Same shell as `RecordingConfig`: `Collapsible.rounded-xl.border`, trigger
-"Run logs" with the chevron. No header action (the raw file is one click away
-via the failure alert and is NDJSON, not something to hand a reviewer). Body
-per §2.7–§2.8. Timestamps are `<time>` elements; the list is an `<ol>` with
-`aria-label="Run log lines"`.
+Shell identical to `RecordingConfig`: `Collapsible.rounded-xl.border`, trigger
+`›  Run logs`, trailing text per §3.8. Body: caption "Saved after the runner
+finishes." then the `<ol aria-label="Run log lines">` per §3.7, or one of the
+§3.9 states.
 
-### 3.6 `components/run-status.tsx` — two lines
+### 4.6 `components/run-status.tsx` — small
 
-Replace the trailing `{view.configUrl ? <RecordingConfig … /> : null}` block
-with a `space-y-4` wrapper holding the same conditional plus
-`<RunLogs logsUrl={view.logsUrl} inProgress={view.status.state === "in_progress"} />`.
+Replace the trailing `{view.configUrl ? <RecordingConfig … /> : null}` with a
+`space-y-4` block:
+
+```tsx
+{view.configUrl ? <RecordingConfig configUrl={view.configUrl} /> : null}
+{view.configUrl && view.status.state === "failed" ? (
+  <p className="text-sm text-muted-foreground">
+    The recording config is available for inspection even though recording failed.
+  </p>
+) : null}
+<RunLogs logsUrl={view.logsUrl} inProgress={view.status.state === "in_progress"} />
+```
+
 Nothing else changes.
 
-### 3.7 Accessibility and focus
+### 4.7 Accessibility and focus
 
-- Disclosure triggers are the base-ui `<button>`; add
-  `focus-visible:ring-3 focus-visible:ring-ring/50 rounded-lg outline-none`
-  so focus is visible on the dark theme. Chevron rotates on
-  `[data-panel-open]` / `aria-expanded=true` via `group-aria-expanded:rotate-180`.
-- Step rows: the whole row is the `CollapsibleTrigger`; index, action, and
-  summary are inside it so the accessible name reads "2 click Select the
-  first inventory row".
-- Tabs per §2.1. Verify with keyboard only: Tab to "Recording config", Enter,
-  Tab to the tablist, Right arrow to Raw JSON, Tab into the `<pre>`
-  (`tabIndex={0}` so the scroll region is reachable), Tab onward to the first
-  step row.
+- Disclosure triggers are the base-ui `<button>`; add `rounded-lg
+  outline-none focus-visible:ring-3 focus-visible:ring-ring/50` so focus is
+  visible on the dark theme. Chevron rotates via
+  `group-aria-expanded:rotate-90` (mockup uses `›` → `⌄`).
+- Step rows: the whole row is the `CollapsibleTrigger`; index, label, and
+  value are inside it so the accessible name reads "4 Type text 6202".
+- Tabs per §3.1. Verify keyboard-only: Tab to "Recording config", Enter, Tab
+  to the tablist, Right arrow to Raw JSON, Tab into the `<pre>` scroll
+  region, Shift+Tab back, Left arrow to Steps, Tab to the first row, Enter.
 
-### 3.8 Copy
+### 4.8 Copy
 
-Plain, no exclamation marks. Exact strings: "Recording config", "Download
-JSON", "Steps", "Raw JSON", "Run logs", "Try again", "Config unavailable",
-"Run log unavailable", "Logs are saved after the runner finishes. They will
-appear here once the run ends.", "No run log was saved for this run.", "The
-runner produced no output.", "Config is not valid JSON", "No parameters".
+Exact strings: "Recording config", "Download JSON", "Steps", "Raw JSON",
+"Configured actions in replay order. Expand a step to inspect its
+parameters.", "Parameters", "Screenshot steps describe capture actions;
+output filenames are configuration values.", "Run logs", "Saved output",
+"Not saved yet", "Unavailable", "Saved after the runner finishes.", "Logs are
+saved after the runner finishes. They will appear here once the run ends.",
+"No run log was saved for this run.", "The runner produced no output.", "Run
+log unavailable", "Config unavailable", "Config is not valid JSON", "Try
+again", "Unknown action", "The recording config is available for inspection
+even though recording failed." No exclamation marks.
 
 ---
 
-## 4. The loop
+## 5. The loop
 
 ### Slice 1 — pure helpers (25 min)
 
-`lib/config/steps.ts`, `lib/logs/parse.ts`, tests. Use
-`fixtures/sample-run/config.json` and a hand-written three-line NDJSON string
-(one with an embedded `\n`, one malformed).
+`lib/config/steps.ts`, `lib/logs/parse.ts`, tests against
+`fixtures/sample-run/config.json` and a hand-written NDJSON string (one line
+with an embedded `\n`, one malformed).
 
 Commit: `Parse recording steps and run log lines for the UI`.
 
 ### Slice 2 — Steps-first config (45 min)
 
-`use-lazy-text.ts`, rewrite `recording-config.tsx` per §3.4. Verify locally
-on PR #2's done run: Steps shows the ten command-palette steps in order,
-each expands to its full fields with any `${…}` placeholder rendered
-literally; Raw JSON scrolls and shows `${VERCEL_PROTECTION_BYPASS}` and
-`${DEMO_LOGIN_TOKEN}` in the video `url`; "Download JSON" still opens the blob; tab switching does
-not refetch (check the network panel).
+`use-lazy-text.ts`, rewrite `recording-config.tsx` body. Verify on PR #2's
+done run against the Steps mockup: ten rows, labels and values match the
+frame ("Press key / Control+k" … "Click / Close"), row 4 expands to the
+three-field JSON, other rows stay closed; Raw JSON shows both `${…}`
+placeholders literally and scrolls; Download JSON still opens the blob; tab
+switching makes no network request.
 
 Commit: `Show recording steps before raw JSON`.
-DECISIONS: §2.1, §2.4, §2.5.
+DECISIONS: §3.1, §3.4, §3.5.
 
 ### Slice 3 — Run logs (35 min)
 
-`run-logs.tsx`, wire into `run-status.tsx`. Verify: done run → lines with UTC
-timestamps, multiline chunks wrapped not truncated, no stream column; the
-retained failure-fixture run (`record / element-not-found`, see DECISIONS
-`[Validation]`) → same, with the failure alert above still linking the raw
-file; a scoping-failed run or fabricated `logsUrl: null` → "No run log was
-saved"; start a record-only re-run and open the disclosure while it runs →
-in-progress copy, then flip to content after completion without a reload;
-block the blob host in devtools → error Alert, unblock, "Try again" loads.
+`run-logs.tsx`, wire into `run-status.tsx` with the failed-run caption.
+Verify: done run → rows match the Run logs mockup, the "Thumbnail / Done"
+chunk stays under one timestamp, no stream column; the retained
+failure-fixture run (`record / element-not-found`) → caption under the config,
+logs beneath, failure alert still links the raw file; a scoping-failed run or
+a locally forced `logsUrl: null` → "Unavailable" / "No run log was saved";
+start a record-only re-run, open Run logs while it runs → "Not saved yet" and
+the in-progress copy, then content after completion without a reload; block
+the blob host in devtools → error Alert, unblock, "Try again" loads.
 
 Commit: `Add a run logs disclosure to the run page`.
-DECISIONS: §2.6, §2.7, §2.8, §2.9.
+DECISIONS: §3.6–§3.9.
 
 ---
 
-## 5. Brittleness checklist
+## 6. Brittleness checklist
 
-- Do not switch on action names, filenames, or step counts anywhere in the
-  UI or helpers.
-- Do not hide, mask, or reformat `${VAR}` placeholders; do not add a
-  credential guard on the parsed object that is looser than the text guard.
+- Do not build the mockups' breadcrumb, "Visit preview" button, pill row, or
+  player/source two-column card. Not this work.
+- Do not filter, sort, or cap steps by action name, filename, or count. The
+  label map is a lookup with a verbatim fallback, never a gate.
+- Do not hide, mask, or reformat `${VAR}` placeholders; do not add a parsed-
+  object credential guard looser than the text guard.
 - Do not colour `stderr`, compute durations between `at` values, or map lines
   to video time.
-- Do not fetch logs while `logsUrl` is `null`, and do not poll the logs URL.
-- Do not add a `<Tabs>` component, a state manager, a virtualised list, or a
-  syntax highlighter.
-- Do not touch `demo-player.tsx`, `FailureAlert`, polling, or anything
-  outside the files in §6.
-- A view without loading, unavailable, and error treatments inside the
-  disclosure body is not done.
+- Do not fetch logs while `logsUrl` is `null`, and never poll the logs URL.
+- Do not add a `<Tabs>` component, a state manager, a virtualised list, a
+  syntax highlighter, or a bespoke JSON tree renderer.
+- Do not touch `demo-player.tsx`, `FailureAlert`, `PhaseStatus`, or polling.
+- A disclosure without loading, unavailable, and error treatments inside its
+  body is not done.
 
 ---
 
-## 6. Files
+## 7. Files
 
 ```
 components/
   recording-config.tsx     rewrite body; keep header and credential guard
   run-logs.tsx             new
-  run-status.tsx           render RunLogs beneath RecordingConfig
+  run-status.tsx           render RunLogs and the failed-run caption
   use-lazy-text.ts         new — shared lazy fetch hook
 lib/config/steps.ts        new + steps.test.ts
 lib/logs/parse.ts          new + parse.test.ts
@@ -296,19 +369,22 @@ DECISIONS.md               per slice
 
 ---
 
-## 7. Done means
+## 8. Done means
 
-- Opening "Recording config" on a completed run lands on Steps: every step in
-  file order, each row expandable to its full parameters with nested values
-  and placeholders intact; Raw JSON is one tab away in a bounded scroll
-  region; Download JSON still works from the header.
-- Opening "Run logs" on a terminal run shows every persisted line with its
-  UTC timestamp beside the output, multiline preserved, no stream column.
-  On an active run it explains logs arrive after the runner finishes; when
-  no log exists it says so; a failed fetch offers Try again.
+- "Recording config" on a completed run opens on Steps and matches the
+  mockup: video key, caption, every step in file order with contract-derived
+  label and primary value, each row expanding independently to its full JSON
+  with nesting and placeholders intact, footer caption; Raw JSON one tab away
+  in a bounded scroll region; Download JSON still in the header.
+- "Run logs" on a terminal run matches the mockup: "Saved output" in the
+  header, caption, every persisted line with a UTC timestamp beside the
+  output, multiline preserved, no stream column. On an active run it reads
+  "Not saved yet" and explains; on a run with no log it reads "Unavailable"
+  and says so; a failed fetch offers Try again.
+- Failed runs show the config caption from the mockup beneath the disclosure.
 - Both disclosures start collapsed, fetch once on first open, and keep their
   content across re-opens and poll updates.
-- Everything is reachable and operable by keyboard with visible focus; tabs
-  expose selected state to assistive tech.
+- Everything is keyboard-operable with visible focus; tabs expose selected
+  state to assistive tech.
 - `npm run type-check && npm test && npm run lint` pass. `DECISIONS.md` has
-  entries for §2.1, §2.4–§2.9.
+  entries for §3.1, §3.4–§3.9.

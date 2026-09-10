@@ -1,17 +1,7 @@
+import { ModelTag } from "@/components/model-tag";
 import { Card } from "@/components/ui/card";
+import { formatCost, formatDuration } from "@/lib/format";
 import type { DemoMetadata } from "@/lib/storage/metadata";
-
-function duration(milliseconds: number): string {
-  const seconds = Math.round(milliseconds / 1_000);
-  return seconds < 60
-    ? `${seconds}s`
-    : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-}
-
-function cost(value: number | null): string {
-  if (value === null) return "not reported";
-  return `$${value.toFixed(value < 0.01 ? 6 : 4)}`;
-}
 
 export function DemoPlayer({ demo }: { demo: DemoMetadata }) {
   return (
@@ -48,11 +38,19 @@ export function DemoPlayer({ demo }: { demo: DemoMetadata }) {
               <dt className="text-xs text-muted-foreground">
                 Pipeline duration
               </dt>
-              <dd className="mt-2 text-sm">{duration(demo.timings.totalMs)}</dd>
+              <dd className="mt-2 text-sm">
+                {formatDuration(demo.timings.totalMs)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Model</dt>
+              <dd className="mt-2">
+                <ModelTag model={demo.model} />
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Model cost</dt>
-              <dd className="mt-2 text-sm">{cost(demo.modelCostUsd)}</dd>
+              <dd className="mt-2 text-sm">{formatCost(demo.modelCostUsd)}</dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Mode</dt>

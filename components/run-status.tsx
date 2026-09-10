@@ -330,9 +330,9 @@ export function RunStatus({ initialView }: { initialView: RunView }) {
         </Alert>
       ) : null}
 
+      {view.demo ? <DemoPlayer demo={view.demo} /> : null}
       <PhaseStatus view={view} phases={phases} />
 
-      {view.demo ? <DemoPlayer demo={view.demo} /> : null}
       {view.status.state === "done" && !view.demo ? (
         <Card>
           <CardContent className="space-y-3 py-10 text-center">

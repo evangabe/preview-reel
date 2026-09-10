@@ -8,5 +8,6 @@ export function formatDuration(milliseconds: number): string {
 /** Reported Gateway spend, displayed at currency precision. */
 export function formatCost(value: number | null): string {
   if (value === null) return "not reported";
+  if (value > 0 && value < 0.01) return "<$0.01";
   return `$${value.toFixed(2)}`;
 }

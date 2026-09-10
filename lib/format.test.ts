@@ -11,7 +11,8 @@ describe("formatDuration", () => {
 
 describe("formatCost", () => {
   it("rounds reported spend to currency precision", () => {
-    expect(formatCost(0.000323)).toBe("$0.00");
+    expect(formatCost(0.000323)).toBe("<$0.01");
+    expect(formatCost(0)).toBe("$0.00");
     expect(formatCost(0.0125)).toBe("$0.01");
     expect(formatCost(1.999)).toBe("$2.00");
   });

@@ -206,6 +206,7 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 - **[UI]** Replaced the gallery's text metrics with two server-rendered KPI cards: total reels and reported model spend, each paired with its past-24-hour trend. The totals still use only the newest reel per PR returned by storage, and unknown spend remains `not reported` rather than being estimated. Tradeoff: trends are a compact window, not a historical chart.
 - **[UI]** The header links to the target project's standard `${project}.vercel.app` alias by default, with `TARGET_VERCEL_PROJECT_URL` as an optional dashboard/custom URL override; the repository remains the right-hand GitHub link. Tradeoff: teams with a nonstandard production alias should set the override.
 - **[UI]** Added a sticky, non-overlapping attribution footer in the root layout so it appears on gallery, run, loading, and error views: Evan Gabrielson, WebReel, Vercel, and the Preview Reel GitHub source link. Tradeoff: the footer is shared chrome rather than a page-specific component.
+- **[UI]** Finalized the presentation pass by making the phase disclosure use the same `text-sm` / muted `size-4` control treatment as the recording and logs disclosures, linking the actual allowlisted repository in the gallery instruction, and removing the redundant config video name above `Entrypoint`. Tradeoff: the Steps view now relies on the entry URL block rather than repeating the video key.
 
 ## Connection model
 

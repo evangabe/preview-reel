@@ -25,7 +25,7 @@ function SiteFooter() {
   return (
     <footer className="sticky bottom-0 z-10 mt-auto border-t bg-background/95 backdrop-blur">
       <div className="mx-auto flex min-h-10 w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-2 text-xs text-muted-foreground sm:px-8">
-        <span>Evan Gabrielson</span>
+        <span>Authored by Evan Gabrielson</span>
         <div className="flex flex-wrap items-center gap-3">
           <a
             href="https://webreel.dev"

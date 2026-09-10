@@ -10,9 +10,10 @@ describe("formatDuration", () => {
 });
 
 describe("formatCost", () => {
-  it("keeps six decimals under a cent and four above", () => {
-    expect(formatCost(0.000323)).toBe("$0.000323");
-    expect(formatCost(0.0125)).toBe("$0.0125");
+  it("rounds reported spend to currency precision", () => {
+    expect(formatCost(0.000323)).toBe("$0.00");
+    expect(formatCost(0.0125)).toBe("$0.01");
+    expect(formatCost(1.999)).toBe("$2.00");
   });
 
   it("never invents a number when nothing was reported", () => {

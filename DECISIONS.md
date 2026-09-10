@@ -167,6 +167,10 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 - **[UI]** Steps / Raw JSON will be two `Button`s with WAI-ARIA tab roles rather than a generated shadcn `tabs` component, because the requirement names Collapsible, Skeleton, Alert, and Button as the primitive set and the switch is ~15 lines. Tradeoff: hand-rolled roving focus; fall back to `tabs` if it grows past 30 lines.
 - **[UI]** Run logs render only `at` beside `data`; `stage`/`stream` are dropped and no severity, duration, or video-time is derived, because those facts belong to the phase list and failure alert and the log chunks are raw process output, not structured events. Tradeoff: stderr and stdout are visually indistinguishable in the disclosure.
 
+## Inspection disclosures — build
+
+- **[UI]** Pinned the app to shadcn's existing `.dark` token set by adding one class on `<html>`, because every Figma frame is dark and the readme frame calls the direction "Vercel-inspired". Chose a fixed theme over a toggle: a toggle is out of scope in `AGENTS.md`, and `prefers-color-scheme` would make preview screenshots depend on the reviewer's OS. Tradeoff: no light mode.
+
 ## Connection model
 
 - **[Onboarding]** One team-level Vercel webhook plus an env allowlist, instead of per-repo installation. Tradeoff: target projects must live in the same Vercel team; a real product needs a Vercel Integration.

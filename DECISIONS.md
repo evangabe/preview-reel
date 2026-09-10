@@ -161,6 +161,12 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 - **[Run status]** Derive terminal status from append-only events before consulting Workflow; local development also trusts in-progress events because a local Workflow runtime cannot resolve production run IDs and left the page request open for minutes. Workflow remains the fallback for eventless runs and deployed in-progress crash detection. Tradeoff: an unexpected local Workflow crash can leave a development-only run shown as in progress.
 - **[Validation]** Live record-only runs verified failed, active, and completed UI states, client polling through completion, config rendering, poster/video range loading, and run-scoped metadata. Tradeoff: the first run intentionally retained its selector failure as a realistic failure-state fixture; the successful run updated the PR comment and became the newest demo.
 
+## Inspection disclosures — planning (docs/plan-inspection-disclosures.md)
+
+- **[Planning]** Wrote the steps/logs disclosure brief from the written requirements and the codebase; the Figma MCP quota ran out after one metadata call (only the "Design direction" readme frame was read), so the mockups were not inspected. The brief tells the implementer to pull them with `get_design_context` first and treats the brief as authoritative on behaviour, the mockup on layout. Tradeoff: layout details in the plan are structural, not pixel guidance.
+- **[UI]** Steps / Raw JSON will be two `Button`s with WAI-ARIA tab roles rather than a generated shadcn `tabs` component, because the requirement names Collapsible, Skeleton, Alert, and Button as the primitive set and the switch is ~15 lines. Tradeoff: hand-rolled roving focus; fall back to `tabs` if it grows past 30 lines.
+- **[UI]** Run logs render only `at` beside `data`; `stage`/`stream` are dropped and no severity, duration, or video-time is derived, because those facts belong to the phase list and failure alert and the log chunks are raw process output, not structured events. Tradeoff: stderr and stdout are visually indistinguishable in the disclosure.
+
 ## Connection model
 
 - **[Onboarding]** One team-level Vercel webhook plus an env allowlist, instead of per-repo installation. Tradeoff: target projects must live in the same Vercel team; a real product needs a Vercel Integration.

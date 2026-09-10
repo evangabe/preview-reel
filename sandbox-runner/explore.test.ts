@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { exploreInputSchema, redact } from "./explore";
+import { exploreInputSchema, isNotFoundSnapshot, redact } from "./explore";
 
 const input = {
   runId: "wfr_123",
@@ -61,5 +61,19 @@ describe("redact", () => {
       url: "https://t.example/x?x-vercel-protection-bypass=<redacted>",
       key: "<redacted>",
     });
+  });
+});
+
+describe("isNotFoundSnapshot", () => {
+  it("recognizes the standard Next.js not-found snapshot", () => {
+    expect(
+      isNotFoundSnapshot(
+        '- heading "404" [level=1]\n- heading "This page could not be found." [level=2]',
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat an ordinary page containing 404 as not found", () => {
+    expect(isNotFoundSnapshot("- heading \"Order 404\" [level=2]")).toBe(false);
   });
 });

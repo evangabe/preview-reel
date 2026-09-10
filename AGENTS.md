@@ -115,7 +115,7 @@ preview-reel/
 │   └── record.ts                         # webreel → mp4 + poster
 ├── components/
 │   ├── ui/                               # shadcn, generated — don't hand-edit
-│   ├── gallery-grid.tsx
+│   ├── gallery-table.tsx
 │   ├── run-status.tsx
 │   ├── demo-player.tsx
 │   └── empty-state.tsx

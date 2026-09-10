@@ -350,10 +350,10 @@ Server component, `export const dynamic = "force-dynamic"`.
 - Header (`components/site-header.tsx`): wordmark → `/`; repo link per §4.8.
 - `<h1>` "Your preview reels". Subtitle: "Demos recorded from `[feat]` PRs
   on their Vercel preview deployments."
-- `components/gallery-grid.tsx` (client, receives `DemoMetadata[]`): search
+- `components/gallery-table.tsx` (client, receives `DemoMetadata[]`): search
   `<Input>` above; groups from `groupByRecency`; each group is a heading plus
-  a responsive grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`). Card:
-  poster `<img>` with `aspect-video object-cover`, `demoTitle`, second line
+  a border-wrapped table without a header row. Each row has a compact poster,
+  a linked `demoTitle`, a GitHub PR link with an icon, and a right-aligned
   `repo #prNumber · relative time`. Whole card is a `<Link href={/runs/${runId}}>`.
   When the search matches nothing: "No reels match “{query}”." inline, not a
   redirect to the empty state.
@@ -461,7 +461,7 @@ Commit: `Render live run status, player, and config`.
 
 ### Slice 3 — gallery (35 min)
 
-`app/page.tsx`, `site-header.tsx`, `gallery-grid.tsx`, `empty-state.tsx`,
+`app/page.tsx`, `site-header.tsx`, `gallery-table.tsx`, `empty-state.tsx`,
 `app/loading.tsx`, `app/error.tsx`. Verify with data present, then verify the
 empty state by temporarily pointing `listCompletedDemos` at a prefix that does
 not exist — and revert before committing.
@@ -528,7 +528,7 @@ app/
   api/dev/trigger-run/route.ts      delete (slice 5)
   api/webhooks/vercel/route.ts      share in-progress guard in slice 4
 components/
-  site-header.tsx  gallery-grid.tsx  empty-state.tsx  run-status.tsx
+  site-header.tsx  gallery-table.tsx  empty-state.tsx  run-status.tsx
   run-metadata.tsx  demo-player.tsx  rerun-buttons.tsx        new
   ui/{card,badge,skeleton,collapsible,input,alert,separator}.tsx  generated
 lib/storage/

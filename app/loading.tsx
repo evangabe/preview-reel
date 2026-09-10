@@ -1,14 +1,13 @@
 import { SiteHeader } from "@/components/site-header";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function LoadingCard() {
+function LoadingRow() {
   return (
-    <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
-      <Skeleton className="aspect-video w-full rounded-none" />
-      <div className="space-y-3 p-4">
-        <Skeleton className="h-4 w-4/5" />
-        <Skeleton className="h-3 w-2/3" />
-      </div>
+    <div className="flex items-center gap-3 border-b px-3 py-3 last:border-b-0 sm:gap-4 sm:px-4">
+      <Skeleton className="aspect-video w-28 shrink-0 rounded-md sm:w-36" />
+      <Skeleton className="h-4 w-1/3" />
+      <Skeleton className="hidden h-4 w-28 sm:block" />
+      <Skeleton className="ml-auto h-4 w-20" />
     </div>
   );
 }
@@ -24,9 +23,16 @@ export default function GalleryLoading() {
           <Skeleton className="mt-3 h-5 w-full max-w-lg" />
         </div>
         <Skeleton className="mb-10 h-10 w-full max-w-md" />
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }, (_, index) => (
-            <LoadingCard key={index} />
+        <div className="space-y-8">
+          {["Today", "Past week", "Earlier"].map((label) => (
+            <section key={label}>
+              <Skeleton className="mb-4 h-4 w-20" />
+              <div className="overflow-hidden rounded-xl border">
+                {Array.from({ length: 2 }, (_, index) => (
+                  <LoadingRow key={index} />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       </main>

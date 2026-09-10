@@ -1,5 +1,5 @@
 import { EmptyState } from "@/components/empty-state";
-import { GalleryGrid } from "@/components/gallery-grid";
+import { GalleryTable } from "@/components/gallery-table";
 import { SiteHeader } from "@/components/site-header";
 import { listCompletedDemos } from "@/lib/storage/runs";
 
@@ -25,7 +25,7 @@ export default async function GalleryPage() {
               deployments.
             </p>
           </div>
-          <GalleryGrid demos={demos} />
+          <GalleryTable demos={demos} />
         </main>
       ) : (
         <EmptyState />

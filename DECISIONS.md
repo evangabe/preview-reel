@@ -178,6 +178,7 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 - **[Testing]** Skipped the unit tests the plan listed for `extractSteps`, `actionLabel`, and `primaryValue`; verification is on the Vercel preview against the Figma frames. Per the assessment brief, a legible component beats a test suite here. Tradeoff: a regression in the fallback path would surface in the UI, not CI.
 - **[Validation]** Will not use the local app for this UI slice because a current Vercel/runtime issue prevents it from loading reliably; local triage is deferred. Tradeoff: each related UI commit is checked through its Vercel preview deployment and browser screenshots instead of local tests or a local dev server.
 - **[UI]** Kept run-log parsing as a small line parser and rendered each saved chunk as one wrapped `<pre>` beside its UTC timestamp; stage, stream, severity, duration, and video-time interpretations are intentionally omitted because the persisted data is raw runner output. Tradeoff: stdout and stderr are visually indistinguishable.
+- **[Preview]** Both UI slices passed the remote Vercel build and returned HTTP 200 through `vercel curl`; browser screenshots are blocked by the project's Deployment Protection redirect to Vercel Login. Tradeoff: visual interaction verification remains pending until preview access is granted or protection is triaged.
 
 ## Connection model
 

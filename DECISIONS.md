@@ -180,6 +180,13 @@ Format: `- **[Area]** Chose X over Y because Z. Tradeoff: W.`
 - **[UI]** Kept run-log parsing as a small line parser and rendered each saved chunk as one wrapped `<pre>` beside its UTC timestamp; stage, stream, severity, duration, and video-time interpretations are intentionally omitted because the persisted data is raw runner output. Tradeoff: stdout and stderr are visually indistinguishable.
 - **[Preview]** Both UI slices passed the remote Vercel build and returned HTTP 200 through `vercel curl`; browser screenshots are blocked by the project's Deployment Protection redirect to Vercel Login. Tradeoff: visual interaction verification remains pending until preview access is granted or protection is triaged.
 
+## Demo readiness — planning (docs/plan-demo-readiness.md)
+
+- **[Planning]** With a day left, chose four items from the assessment rubric over polish: the rerun route (the on-stage "watch it run" moment and the promise the failed-state comment already makes), placeholders as a visible feature, an explicit auth-wall reason in the record path, and model/cost visibility. Cut stale-demo detection and model-on-failed-runs to a carry-forward list. Tradeoff: two existing reels will show "model not recorded" until re-run.
+- **[Process]** Each slice ships as its own PR, validated on the Vercel preview build (API via `vercel curl`, UI on production after merge), and merged before the next branches from `main`. Tradeoff: no local dev-server checks (see `[Validation]`); a UI regression is seen on production, not before.
+
+## Demo readiness — build
+
 ## Connection model
 
 - **[Onboarding]** One team-level Vercel webhook plus an env allowlist, instead of per-repo installation. Tradeoff: target projects must live in the same Vercel team; a real product needs a Vercel Integration.
